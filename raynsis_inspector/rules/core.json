@@ -1578,6 +1578,233 @@
       }
     },
     {
+      "id": "tool.no-test-file-delete",
+      "kind": "evidence",
+      "event": "tool",
+      "action": "warn",
+      "tools": [
+        "Bash",
+        "PowerShell"
+      ],
+      "field": "command",
+      "pattern": "\\b(?:rm|unlink|del|Remove-Item)\\b(?:(?!\\b(?:rm|unlink|del|Remove-Item)\\b)[^;&|\\n])*?(?<![\\w.-])(?:(?:tests?|__tests__|specs?)/?(?=[\\s'\\\")]|$)|[\\w./-]*?(?<!\\w)(?:test_[\\w-]*\\.py|[\\w-]+_test\\.(?:py|go|rb)|[\\w-]+\\.(?:test|spec)\\.[cm]?[jt]sx?|Test[\\w-]*\\.java|[\\w-]+Tests?\\.(?:java|kt|cs|swift))(?![\\w.-]))",
+      "unless": "\\bgit\\s+rm\\b[^;&|\\n]*\\s--cached\\b",
+      "message": "This deletes test files. Deleting a failing test is not fixing it: tell the human which test and why.",
+      "examples": {
+        "hit": [
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm tests/test_api.py"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "git rm tests/test_login.py"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm -f src/parser_test.go"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm -rf tests"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm web/src/api.test.ts && npm test"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "cd app; rm -rf __tests__/"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "unlink spec/models/user.spec.js"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "Remove-Item tests/test_io.py"
+            }
+          }
+        ],
+        "miss": [
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm -rf .pytest_cache"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm -rf tests/__pycache__"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm -f test.log coverage.xml"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "git rm --cached tests/test_api.py"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm -rf build dist"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "pytest tests/test_api.py"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm tests/fixtures/old.json"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "cat tests/test_api.py"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool.no-test-function-delete",
+      "kind": "evidence",
+      "event": "tool",
+      "action": "warn",
+      "tools": [
+        "Edit",
+        "Write",
+        "MultiEdit"
+      ],
+      "field": [
+        "new_string",
+        "content"
+      ],
+      "only_removed": true,
+      "pattern": "(?m)^[ \\t]*(?:async[ \\t]+)?def[ \\t]+test\\w*[ \\t]*\\(|^[ \\t]*func[ \\t]+Test\\w*[ \\t]*\\(|^[ \\t]*fn[ \\t]+test_\\w*[ \\t]*\\(|\\b(?:it|test)(?:\\.only)?[ \\t]*\\([ \\t]*['\\\"`]|@Test\\b",
+      "message": "This edit removes an existing test. Deleting a failing test is not fixing it: tell the human which test and why.",
+      "examples": {
+        "hit": [
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "tests/test_api.py",
+              "old_string": "def test_login():\n    assert login()\n\ndef test_logout():\n    assert logout()\n",
+              "new_string": "def test_logout():\n    assert logout()\n"
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "tests/test_api.py",
+              "old_string": "def test_login():\n    assert login()\n",
+              "new_string": ""
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "api.test.ts",
+              "old_string": "it('logs in', () => {\n  expect(login()).toBe(true);\n});\n",
+              "new_string": ""
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "parser_test.go",
+              "old_string": "func TestParse(t *testing.T) {\n\tcheck(t)\n}\n",
+              "new_string": ""
+            }
+          },
+          {
+            "tool": "Write",
+            "input": {
+              "file_path": "tests/test_api.py",
+              "_prior": "def test_a():\n    assert a()\n\ndef test_b():\n    assert b()\n",
+              "content": "def test_a():\n    assert a()\n"
+            }
+          }
+        ],
+        "miss": [
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "tests/test_api.py",
+              "old_string": "def test_login():\n    assert login() == 1",
+              "new_string": "def test_login():\n    assert login() == 2"
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "tests/test_api.py",
+              "old_string": "def test_old_name():",
+              "new_string": "def test_new_name():"
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "tests/test_api.py",
+              "old_string": "def helper():\n    return 1\n",
+              "new_string": ""
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "tests/test_api.py",
+              "old_string": "",
+              "new_string": "def test_new():\n    assert new()\n"
+            }
+          },
+          {
+            "tool": "Write",
+            "input": {
+              "file_path": "tests/test_new.py",
+              "content": "def test_a():\n    assert a()\n"
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "docs/testing.md",
+              "old_string": "Run the tests before you push.",
+              "new_string": "Run the tests."
+            }
+          }
+        ]
+      }
+    },
+    {
       "id": "reply.tests-pass-needs-run",
       "kind": "evidence",
       "event": "reply",

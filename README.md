@@ -74,7 +74,7 @@ DENY reply.tests-pass-needs-run
      matched: "All tests pass"
 
 $ raynsis-inspector check reply 'Fixed the parser. All tests pass.' --turn 'Edit: {"file_path": "parser.py"}' --turn 'Bash: {"command": "pytest -q"}'
-pass: no rule fired (18 rules checked)
+pass: no rule fired (20 rules checked)
 ```
 
 `raynsis-inspector check` exits 1 when a deny rule fires, so it also works in scripts.
@@ -95,6 +95,8 @@ pass: no rule fired (18 rules checked)
 | `tool.guardrails-read-only-shell` | tool | deny | Writing to guardrail files (hook settings, hook scripts, installed plugins, .raynsis-inspector/) from the shell is blocked. |
 | `tool.guardrails-read-only-mcp` | tool | deny | An agent does not edit its own guardrails through an MCP file tool either. |
 | `tool.no-test-skip` | tool | warn | This edit marks an existing test as skipped or expected to fail. |
+| `tool.no-test-file-delete` | tool | warn | This deletes test files. |
+| `tool.no-test-function-delete` | tool | warn | This edit removes an existing test. |
 | `reply.tests-pass-needs-run` | reply | deny | You said tests pass, but no test command ran in this turn. |
 | `reply.build-passes-needs-run` | reply | deny | You said the build, type check or lint passes, but none of them ran in this turn. |
 | `reply.done-needs-action` | reply | deny | You claimed finished work, but no tool ran in this turn. |
@@ -110,6 +112,8 @@ The full patterns and their examples are in [`raynsis_inspector/rules/core.json`
 - **Tool rules** match a regex against named fields of the tool input (`command`, `file_path`, `content`, ...).
   An `unless` regex can exempt a match. `"only_added": true` fires only when an edit adds a match
   that the replaced text did not have, so an existing skipped test does not trip `tool.no-test-skip`.
+  `"only_removed": true` is the mirror: it fires when an edit leaves fewer matches than it replaced,
+  so deleting a test function trips `tool.no-test-function-delete` and renaming one does not.
 - **Reply rules** match a claim in the final reply, then look for evidence among the tool calls made
   in this turn (since the last human message). "Tests pass" needs a test command run through a shell
   or a subagent; "the build passes" needs a build, type check or lint command; "I've deployed" needs at
@@ -253,6 +257,9 @@ Before release we measured false alarms on real traffic:
   right: a link in a reply that never appeared in its session. One was a false alarm: a heredoc that only
   mentioned a `*.env` file name (the mention gap under Known gaps). The audit fixes changed no result on
   this traffic: the rules before and after them gave the same two hits.
+- **0.2.1 replay.** The two test-deletion rules added in 0.2.1, replayed over the 398 latest transcripts
+  (2,797 shell commands, 269 file edits): 0 hits, so no false alarm on our traffic and no agent caught
+  deleting a test in it either.
 - **Shadow run.** 24 hours on live sessions, 6,735 evaluations, two hits, both false alarms, both fixed:
   a `>` inside a quoted grep pattern read as a redirect, and a project test script not recognised as a
   test command (now configurable with `needs_turn+`).
@@ -260,7 +267,7 @@ Before release we measured false alarms on real traffic:
   "All tests pass." sent back and corrected, the same claim from a subagent sent back and corrected,
   a skip added to a test warned.
 
-Our fleet already runs about 228 stricter house rules, so few violations reach these 18. Read the
+Our fleet already runs about 228 stricter house rules, so few violations reach these rules. Read the
 numbers as a false-alarm measurement, not a catch rate.
 
 Two lessons shaped the code:

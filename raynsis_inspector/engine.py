@@ -28,8 +28,11 @@ def validate(rule) -> list:
     for k in STR_KEYS:
         if rule.get(k) is not None and not isinstance(rule[k], str):
             errs.append("%s: %r must be a string" % (rid, k))
-    if rule.get("only_added") is not None and not isinstance(rule["only_added"], bool):
-        errs.append("%s: 'only_added' must be true or false" % rid)
+    for k in ("only_added", "only_removed"):
+        if rule.get(k) is not None and not isinstance(rule[k], bool):
+            errs.append("%s: %r must be true or false" % (rid, k))
+    if rule.get("only_added") and rule.get("only_removed"):
+        errs.append("%s: 'only_added' and 'only_removed' cannot both be true" % rid)
     for k in LIST_KEYS:
         v = rule.get(k)
         if v is not None and not (isinstance(v, str) or (isinstance(v, list) and all(isinstance(x, str) for x in v))):
@@ -211,7 +214,8 @@ def tool_hits(rules: list, tool: str, tool_input: dict) -> list:
 
     A rule with "only_added": true fires only when the edit adds a match: the new text (new_string,
     content) has more matches than the text it replaces (old_string, or "_prior", the current file
-    content the caller may pass for Write).
+    content the caller may pass for Write). "only_removed": true is the mirror: it fires only when the
+    replaced text has more matches than the new text, e.g. an edit that deletes a test function.
     """
     hits = []
     tool_input = tool_input if isinstance(tool_input, dict) else {}
@@ -219,6 +223,17 @@ def tool_hits(rules: list, tool: str, tool_input: dict) -> list:
         if not applies(r, "tool", tool):
             continue
         text = _tool_text(r, tool_input)
+        if r.get("only_removed"):
+            if "content" in tool_input and "_prior" not in tool_input:
+                continue  # Write of a new file: nothing was there to remove
+            before = _tool_text(r, tool_input, old=True)
+            m = re.search(r["pattern"], before)
+            if not m or (r.get("unless") and re.search(r["unless"], _segment(before, m.start(), m.end()))):
+                continue
+            if len(re.findall(r["pattern"], before)) <= len(re.findall(r["pattern"], text)):
+                continue
+            hits.append((r, m.group(0)))
+            continue
         m = re.search(r["pattern"], text)
         if not m or (r.get("unless") and re.search(r["unless"], _segment(text, m.start(), m.end()))):
             continue

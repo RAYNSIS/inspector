@@ -87,7 +87,7 @@ def _disarm() -> None:
 
 def with_prior(tool_input: dict) -> dict:
     """For a Write that replaces an existing file, add its current text as "_prior", so "only_added"
-    rules compare against what is already there. Missing, unreadable, special (FIFO, device) or very
+    and "only_removed" rules compare against what is already there. Missing, unreadable, special (FIFO, device) or very
     large files count as empty."""
     path = tool_input.get("file_path")
     if "content" not in tool_input or not isinstance(path, str) or not path:
@@ -144,7 +144,7 @@ def run_hook(payload: dict) -> int:
         tool_input = payload.get("tool_input") or {}
         if not isinstance(tool_input, dict):
             tool_input = {}
-        if any(r.get("only_added") for r in applicable):
+        if any(r.get("only_added") or r.get("only_removed") for r in applicable):
             tool_input = with_prior(tool_input)
         hits = engine.tool_hits(applicable, tool, tool_input)
     elif event_name in ("Stop", "SubagentStop"):

@@ -4,6 +4,22 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.1
+
+Two warn rules for the agent that turns a failing suite green by deleting the test.
+
+- `tool.no-test-file-delete`: `rm`, `git rm`, `unlink`, `del` or `Remove-Item` on a test file
+  (`test_*.py`, `*_test.go`, `*.test.ts`, `*.spec.js`, `FooTest.java`, ...) or a whole `tests/`,
+  `__tests__/` or `spec/` folder. `git rm --cached` and caches such as `tests/__pycache__` are left alone.
+- `tool.no-test-function-delete`: an Edit, MultiEdit or Write that leaves fewer test definitions
+  (`def test_*`, `func Test*`, `it(...)`, `test(...)`, `@Test`) than the text it replaces. Renaming or
+  moving a test inside one edit does not count.
+- Rules can now say `"only_removed": true`, the mirror of `"only_added"`: the rule fires only when the
+  replaced text has more matches than the new text.
+
+Both rules warn and never block: deleting a test can be the right change, so the agent is told to
+say which test and why.
+
 ## 0.2.0
 
 Renamed from kanit to RAYNSIS Inspector. No rule behaviour changed.

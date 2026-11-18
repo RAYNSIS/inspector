@@ -1,4 +1,4 @@
-"""Rule patches, only_added, compaction-aware turns, check/rules commands, packaging consistency."""
+"""Rule patches, only_added, only_removed, compaction-aware turns, check/rules commands, packaging consistency."""
 from __future__ import annotations
 
 import io
@@ -138,6 +138,49 @@ class OnlyAdded(Base):
         self.assertNotIn("_prior", cli.with_prior({"file_path": path, "content": "y"}))
         self.assertNotIn("_prior", cli.with_prior({"file_path": "/nonexistent/f.py", "content": "y"}))
         self.assertNotIn("_prior", cli.with_prior({"file_path": path}))
+
+
+class OnlyRemoved(Base):
+    def rule(self, rid="tool.no-test-function-delete"):
+        rules, _ = engine.load_rules([cli.CORE_RULES])
+        return [r for r in rules if r["id"] == rid]
+
+    def test_multiedit_that_drops_a_test_is_caught(self):
+        inp = {"file_path": "t.py", "edits": [{"old_string": "def test_a():\n    assert a()\n", "new_string": ""},
+                                              {"old_string": "x = 1", "new_string": "x = 2"}]}
+        self.assertTrue(engine.tool_hits(self.rule(), "MultiEdit", inp))
+
+    def test_moving_a_test_inside_one_multiedit_is_not_a_removal(self):
+        inp = {"file_path": "t.py", "edits": [{"old_string": "def test_a():\n    assert a()\n", "new_string": ""},
+                                              {"old_string": "# end", "new_string": "def test_a():\n    assert a()\n# end"}]}
+        self.assertFalse(engine.tool_hits(self.rule(), "MultiEdit", inp))
+
+    def test_write_that_drops_a_test_through_the_hook(self):
+        path = os.path.join(self.tmp.name, "test_x.py")
+        with open(path, "w") as f:
+            f.write("def test_x():\n    assert run()\n\ndef test_y():\n    assert other()\n")
+        rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Write", "cwd": self.tmp.name,
+                             "tool_input": {"file_path": path, "content": "def test_y():\n    assert other()\n"}})
+        self.assertIn("tool.no-test-function-delete", out["systemMessage"])
+        self.assertNotIn("hookSpecificOutput", out, "warn rules never block")
+
+    def test_write_of_a_new_file_removes_nothing(self):
+        rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Write", "cwd": self.tmp.name,
+                             "tool_input": {"file_path": os.path.join(self.tmp.name, "test_new.py"),
+                                            "content": "def test_new():\n    assert new()\n"}})
+        self.assertIsNone(out)
+
+    def test_flag_types_and_conflict_are_rejected(self):
+        base = {"id": "r", "event": "tool", "action": "warn", "message": "m", "pattern": "x"}
+        self.assertTrue(engine.validate(dict(base, only_removed="yes")))
+        self.assertTrue(engine.validate(dict(base, only_added=True, only_removed=True)))
+        self.assertFalse(engine.validate(dict(base, only_removed=True)))
+
+    def test_deleting_a_test_file_from_the_shell_warns_without_blocking(self):
+        rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Bash", "cwd": self.tmp.name,
+                             "tool_input": {"command": "rm tests/test_api.py && pytest"}})
+        self.assertIn("tool.no-test-file-delete", out["systemMessage"])
+        self.assertNotIn("hookSpecificOutput", out, "warn rules never block")
 
 
 class Compaction(Base):
