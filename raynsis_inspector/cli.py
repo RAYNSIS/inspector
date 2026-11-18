@@ -23,23 +23,24 @@ def packaged_rules() -> list:
 
 
 def shadow() -> bool:
-    """KANIT_SHADOW=1: evaluate and log everything, print nothing. For trying kanit on real traffic."""
-    return os.environ.get("KANIT_SHADOW") == "1"
+    """RAYNSIS_INSPECTOR_SHADOW=1: evaluate and log everything, print nothing.
+    For trying RAYNSIS Inspector on real traffic."""
+    return os.environ.get("RAYNSIS_INSPECTOR_SHADOW") == "1"
 
 
 def rule_paths() -> list:
-    """Packaged rules, then project rules (.kanit/rules.json), then KANIT_RULES (os.pathsep list)."""
+    """Packaged rules, then project rules (.raynsis-inspector/rules.json), then RAYNSIS_INSPECTOR_RULES (os.pathsep list)."""
     paths = packaged_rules()
-    project = os.path.join(audit.project_dir(), ".kanit", "rules.json")
+    project = os.path.join(audit.project_dir(), ".raynsis-inspector", "rules.json")
     if os.path.exists(project):
         paths.append(project)
-    paths.extend(p for p in os.environ.get("KANIT_RULES", "").split(os.pathsep) if p)
+    paths.extend(p for p in os.environ.get("RAYNSIS_INSPECTOR_RULES", "").split(os.pathsep) if p)
     return paths
 
 
 def _disabled() -> list:
     # set by the human in the environment of the hook process; the agent cannot change it
-    return [x.strip() for x in os.environ.get("KANIT_DISABLE", "").split(",") if x.strip()]
+    return [x.strip() for x in os.environ.get("RAYNSIS_INSPECTOR_DISABLE", "").split(",") if x.strip()]
 
 
 def _emit(obj: dict) -> None:
@@ -58,7 +59,7 @@ def _read_payload(stream) -> dict:
 
 
 PRIOR_MAX_BYTES = 2 * 1024 * 1024
-# Claude Code lets a call through when a hook times out (10 s PreToolUse, 20 s Stop here), so kanit
+# Claude Code lets a call through when a hook times out (10 s PreToolUse, 20 s Stop here), so RAYNSIS Inspector
 # stops itself first and decides on purpose instead of timing out open.
 BUDGET_S = {"PreToolUse": 6.0, "Stop": 14.0, "SubagentStop": 14.0}
 DEFAULT_BUDGET_S = 6.0
@@ -102,8 +103,8 @@ def with_prior(tool_input: dict) -> dict:
 
 
 def weakened(rules: list) -> list:
-    """Packaged rules that project files or KANIT_RULES turned off or changed (KANIT_DISABLE is the
-    human's own switch and is not counted). The agent may find a way to write .kanit/rules.json, so
+    """Packaged rules that project files or RAYNSIS_INSPECTOR_RULES turned off or changed (RAYNSIS_INSPECTOR_DISABLE is the
+    human's own switch and is not counted). The agent may find a way to write .raynsis-inspector/rules.json, so
     the human is told whenever it weakens the packaged set."""
     base = {r["id"]: r for r in engine.load_rules(packaged_rules())[0]}
     final = {r["id"]: r for r in rules}
@@ -123,7 +124,7 @@ def _weakened_note(session: str) -> str:
             digest.update(engine.read_rules_file_bytes(p))
         except (OSError, ValueError):
             digest.update(p.encode("utf-8", "replace"))
-    text = ("kanit: project rules turn off or change %d packaged rule(s): %s. If you did not make this change, "
+    text = ("RAYNSIS Inspector: project rules turn off or change %d packaged rule(s): %s. If you did not make this change, "
             "check %s." % (len(ids), ", ".join(ids[:8]) + (" ..." if len(ids) > 8 else ""), ", ".join(extra)))
     return audit.notice(session + ":" + digest.hexdigest(), text)
 
@@ -196,11 +197,12 @@ def _over_budget(payload: dict) -> int:
     if event_name == "PreToolUse":
         _emit({"hookSpecificOutput": {
             "hookEventName": "PreToolUse", "permissionDecision": "deny",
-            "permissionDecisionReason": ("kanit could not finish checking this call within %.0f s (a very large or "
-                                         "unusual input). Split the command, or write long content with the "
-                                         "Write tool." % budget)}})
+            "permissionDecisionReason": ("RAYNSIS Inspector could not finish checking this call within %.0f s "
+                                         "(a very large or unusual input). Split the command, or write long "
+                                         "content with the Write tool." % budget)}})
     else:
-        _emit({"systemMessage": "kanit warning: this reply could not be checked within %.0f s and was not checked." % budget})
+        _emit({"systemMessage": "RAYNSIS Inspector warning: this reply could not be checked within %.0f s "
+                                "and was not checked." % budget})
     return 0
 
 
@@ -220,11 +222,13 @@ def hook(stream=None) -> int:
         warning = audit.fail_loud(e)
         if warning:
             out["systemMessage"] = warning
-        if os.environ.get("KANIT_FAIL_CLOSED") == "1" and isinstance(payload, dict) \
+        if os.environ.get("RAYNSIS_INSPECTOR_FAIL_CLOSED") == "1" and isinstance(payload, dict) \
                 and payload.get("hook_event_name") == "PreToolUse":
             out["hookSpecificOutput"] = {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                                         "permissionDecisionReason": "kanit engine error and KANIT_FAIL_CLOSED=1: %r" % e}
-        if out and not shadow():  # in shadow mode the error is still in audit.jsonl and `kanit doctor`
+                                         "permissionDecisionReason": "RAYNSIS Inspector engine error and "
+                                                                     "RAYNSIS_INSPECTOR_FAIL_CLOSED=1: %r" % e}
+        # in shadow mode the error is still in audit.jsonl and `raynsis-inspector doctor`
+        if out and not shadow():
             _emit(out)
         return 0
     finally:
@@ -334,7 +338,7 @@ def stats(window: int = 600, out=None) -> dict:
 
 def doctor() -> int:
     problems = []
-    print("kanit %s · python %s" % (__version__, sys.version.split()[0]))
+    print("RAYNSIS Inspector %s · python %s" % (__version__, sys.version.split()[0]))
     if sys.version_info < (3, 9):
         problems.append("python >= 3.9 required")
     rules, errors = engine.load_rules(rule_paths(), _disabled())
@@ -369,14 +373,14 @@ def main(argv=None) -> int:
             s.reconfigure(errors="replace")
         except (AttributeError, ValueError):
             pass
-    ap = argparse.ArgumentParser(prog="kanit", description="Evidence gates for coding agents.")
-    ap.add_argument("--version", action="version", version="kanit " + __version__)
+    ap = argparse.ArgumentParser(prog="raynsis-inspector", description="Evidence gates for coding agents.")
+    ap.add_argument("--version", action="version", version="RAYNSIS Inspector " + __version__)
     sub = ap.add_subparsers(dest="cmd")
     sub.add_parser("hook", help="read a Claude Code hook payload on stdin")
     c = sub.add_parser("check", help="dry run: which rules fire on a shell command, tool call or reply",
-                       description="Examples:  kanit check bash 'git push --force'   "
-                                   "kanit check reply 'All tests pass.' --turn 'Edit: app.py'   "
-                                   "kanit check tool Write --input '{\"file_path\": \".env\"}'")
+                       description="Examples:  raynsis-inspector check bash 'git push --force'   "
+                                   "raynsis-inspector check reply 'All tests pass.' --turn 'Edit: app.py'   "
+                                   "raynsis-inspector check tool Write --input '{\"file_path\": \".env\"}'")
     c.add_argument("kind", choices=("bash", "tool", "reply"))
     c.add_argument("text", help="the shell command, the tool name (kind tool) or the reply text")
     c.add_argument("--input", default="{}", help="tool input as JSON (kind tool)")

@@ -1,9 +1,33 @@
 # Changelog
 
-All notable changes to kanit. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
-versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.1.0
+## 0.2.0
+
+Renamed from kanit to RAYNSIS Inspector. No rule behaviour changed.
+
+- PyPI package: `kanit-gates` → `raynsis-inspector`.
+- Command: `kanit` → `raynsis-inspector`; `python -m kanit` → `python -m raynsis_inspector`.
+- Python module: `kanit` → `raynsis_inspector`.
+- Claude Code plugin and marketplace: `kanit@kanit` → `raynsis-inspector@raynsis-inspector`;
+  the hook launcher `bin/kanit` → `bin/raynsis-inspector`.
+- Repository: `RAYNSIS/kanit` → `RAYNSIS/inspector` (GitHub redirects the old links).
+- Project folder: `.kanit/` (`rules.json`, audit logs, `failure.json`) → `.raynsis-inspector/`.
+- Environment variables: `KANIT_SHADOW`, `KANIT_DISABLE`, `KANIT_FAIL_CLOSED`, `KANIT_HOME`, `KANIT_RULES`
+  → `RAYNSIS_INSPECTOR_SHADOW`, `RAYNSIS_INSPECTOR_DISABLE`, `RAYNSIS_INSPECTOR_FAIL_CLOSED`,
+  `RAYNSIS_INSPECTOR_HOME`, `RAYNSIS_INSPECTOR_RULES`.
+- Messages begin with "RAYNSIS Inspector" instead of "kanit".
+- The guardrail rules protect `.raynsis-inspector/` exactly as they protected `.kanit/`; rule ids are
+  unchanged, and their examples use the new names (plus `claude plugin disable raynsis-inspector`).
+
+Upgrading from kanit 0.1.0: the old names are not read. Move `.kanit/rules.json` to
+`.raynsis-inspector/rules.json`, rename any `KANIT_*` variables, and replace the plugin
+(`kanit@kanit` → `raynsis-inspector@raynsis-inspector`) or the pip package (`kanit-gates` →
+`raynsis-inspector`).
+
+## 0.1.0 (published as kanit, PyPI `kanit-gates`)
 
 First public release.
 

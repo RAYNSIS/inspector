@@ -2,7 +2,7 @@
 
 Lesson from production (04.11.2026): our engine crashed on a missing rule field ~906 times
 in nine hours and failed open; every gate silently stopped working. Here a crash still lets
-the session continue (unless KANIT_FAIL_CLOSED=1), but it is logged and shown on screen.
+the session continue (unless RAYNSIS_INSPECTOR_FAIL_CLOSED=1), but it is logged and shown on screen.
 Logging itself never raises: a log that cannot be written must not take a decision down with it.
 """
 from __future__ import annotations
@@ -27,11 +27,12 @@ def project_dir() -> str:
 
 
 def home() -> str:
-    return os.environ.get("KANIT_HOME") or os.path.join(project_dir(), ".kanit")
+    return os.environ.get("RAYNSIS_INSPECTOR_HOME") or os.path.join(project_dir(), ".raynsis-inspector")
 
 
 # Logs live next to the project's rules; keep them out of git, keep rules.json in.
-GITIGNORE = "# written by kanit: logs stay local, rules.json is meant to be committed\n*.jsonl\n*.jsonl.1\nfailure.json\n"
+GITIGNORE = ("# written by RAYNSIS Inspector: logs stay local, rules.json is meant to be committed\n"
+             "*.jsonl\n*.jsonl.1\nfailure.json\n")
 
 
 def ensure_home() -> str:
@@ -57,13 +58,13 @@ def _append(name: str, row: dict) -> None:
                 os.replace(path, path + ".1")
         except OSError:
             pass
-        # O_NOFOLLOW: a planted symlink (.kanit/evals.jsonl -> ~/.bashrc) is refused, not appended to
+        # O_NOFOLLOW: a planted symlink (.raynsis-inspector/evals.jsonl -> ~/.bashrc) is refused, not appended to
         fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | _NOFOLLOW, 0o644)
         with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(line)
     except Exception as e:  # never raise, never swallow silently
         try:
-            sys.stderr.write("kanit: audit write failed (%s): %r\n" % (path, e))
+            sys.stderr.write("RAYNSIS Inspector: audit write failed (%s): %r\n" % (path, e))
         except Exception:
             pass
 
@@ -124,7 +125,7 @@ def _throttle(key: str, now: float) -> tuple:
         os.replace(tmp, path)  # replaces a planted symlink instead of writing through it
     except Exception as e:
         try:
-            sys.stderr.write("kanit: failure state write failed: %r\n" % e)
+            sys.stderr.write("RAYNSIS Inspector: failure state write failed: %r\n" % e)
         except Exception:
             pass
     return show, s["count"]
@@ -146,7 +147,7 @@ def fail_loud(exc: BaseException, now: float = 0.0) -> str:
     show, count = _throttle(_key("engine_error", type(exc).__name__ + str(exc)[:80]), now)
     if not show:
         return ""
-    return ("kanit ENGINE ERROR: gates are NOT enforcing (%d times in the last hour). Last: %s. Log: %s"
+    return ("RAYNSIS Inspector ENGINE ERROR: gates are NOT enforcing (%d times in the last hour). Last: %s. Log: %s"
             % (count, repr(exc)[:120], os.path.join(home(), "audit.jsonl")))
 
 
@@ -159,7 +160,7 @@ def rule_errors(errors: list, now: float = 0.0) -> str:
     show, _ = _throttle(_key("rule_error", "\n".join(errors)), now)
     if not show:
         return ""
-    return "kanit: %d invalid rule(s) skipped, the rest still enforce: %s" % (len(errors), "; ".join(errors[:3]))
+    return "RAYNSIS Inspector: %d invalid rule(s) skipped, the rest still enforce: %s" % (len(errors), "; ".join(errors[:3]))
 
 
 def notice(key: str, text: str, now: float = 0.0) -> str:

@@ -11,7 +11,7 @@ from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from kanit import __version__, audit, cli, engine, transcript  # noqa: E402
+from raynsis_inspector import __version__, audit, cli, engine, transcript  # noqa: E402
 from tests.test_engine import Base, _dump, _write_transcript, human, say, tool_result, tool_use  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -258,15 +258,15 @@ class Packaging(unittest.TestCase):
         hooks = self.read_json("hooks", "hooks.json")["hooks"]
         for event in ("PreToolUse", "Stop", "SubagentStop"):
             cmds = [h["command"] for group in hooks[event] for h in group["hooks"]]
-            self.assertTrue(all("${CLAUDE_PLUGIN_ROOT}/bin/kanit" in c and c.endswith(" hook") for c in cmds), cmds)
-        self.assertTrue(os.path.exists(os.path.join(ROOT, "bin", "kanit")))
+            self.assertTrue(all("${CLAUDE_PLUGIN_ROOT}/bin/raynsis-inspector" in c and c.endswith(" hook") for c in cmds), cmds)
+        self.assertTrue(os.path.exists(os.path.join(ROOT, "bin", "raynsis-inspector")))
 
     def test_readme_rule_table_matches_the_rules(self):
         buf = io.StringIO()
         cli.rules_table(paths=cli.packaged_rules(), markdown=True, out=buf)
         with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as f:
             readme = f.read()
-        self.assertTrue(buf.getvalue().strip() in readme, "README rule table is stale: run `kanit rules --markdown`")
+        self.assertTrue(buf.getvalue().strip() in readme, "README rule table is stale: run `raynsis-inspector rules --markdown`")
 
     def test_rule_files_hold_no_raw_secret_looking_strings(self):
         # GitHub secret scanning reads raw text: examples escape one character as \uXXXX,
@@ -281,7 +281,7 @@ class Packaging(unittest.TestCase):
 
     def test_every_rule_file_is_packaged(self):
         with open(os.path.join(ROOT, "pyproject.toml"), encoding="utf-8") as f:
-            self.assertIn('kanit = ["rules/*.json"]', f.read())
+            self.assertIn('raynsis_inspector = ["rules/*.json"]', f.read())
 
 
 if __name__ == "__main__":

@@ -3,9 +3,8 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-# "kanit" on PyPI belongs to an unrelated 2014 project, so the distribution is kanit-gates;
-# the command and the import name are both `kanit`.
-name = "kanit-gates"
+# Distribution and command: raynsis-inspector. Import name: raynsis_inspector.
+name = "raynsis-inspector"
 dynamic = ["version"]
 description = "Evidence gates for coding agents: block dangerous tool calls and send back claims the transcript cannot prove."
 readme = "README.md"
@@ -33,18 +32,18 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/RAYNSIS/kanit"
-Issues = "https://github.com/RAYNSIS/kanit/issues"
-Changelog = "https://github.com/RAYNSIS/kanit/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/RAYNSIS/inspector"
+Issues = "https://github.com/RAYNSIS/inspector/issues"
+Changelog = "https://github.com/RAYNSIS/inspector/blob/main/CHANGELOG.md"
 
 [project.scripts]
-kanit = "kanit.cli:main"
+raynsis-inspector = "raynsis_inspector.cli:main"
 
 [tool.setuptools]
-packages = ["kanit"]
+packages = ["raynsis_inspector"]
 
 [tool.setuptools.dynamic]
-version = { attr = "kanit.__version__" }
+version = { attr = "raynsis_inspector.__version__" }
 
 [tool.setuptools.package-data]
-kanit = ["rules/*.json"]
+raynsis_inspector = ["rules/*.json"]

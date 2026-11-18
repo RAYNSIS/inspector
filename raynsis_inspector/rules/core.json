@@ -1069,8 +1069,8 @@
         "file_path",
         "notebook_path"
       ],
-      "pattern": "(?i)(?:^|[\\\\/])\\.claude[\\\\/](?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks[\\\\/]|plugins[\\\\/])|(?:^|[\\\\/])\\.kanit[\\\\/]",
-      "message": "An agent does not edit its own guardrails: hook settings, hook scripts, installed plugins or kanit's rules and logs. Ask the human to make this change by hand.",
+      "pattern": "(?i)(?:^|[\\\\/])\\.claude[\\\\/](?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks[\\\\/]|plugins[\\\\/])|(?:^|[\\\\/])\\.raynsis-inspector[\\\\/]",
+      "message": "An agent does not edit its own guardrails: hook settings, hook scripts, installed plugins or RAYNSIS Inspector's rules and logs. Ask the human to make this change by hand.",
       "examples": {
         "hit": [
           {
@@ -1082,7 +1082,7 @@
           {
             "tool": "Write",
             "input": {
-              "file_path": "/repo/.kanit/rules.json"
+              "file_path": "/repo/.raynsis-inspector/rules.json"
             }
           },
           {
@@ -1094,7 +1094,7 @@
           {
             "tool": "Edit",
             "input": {
-              "file_path": "/home/u/.claude/plugins/cache/kanit/kanit/rules/core.json"
+              "file_path": "/home/u/.claude/plugins/cache/raynsis-inspector/raynsis-inspector/raynsis_inspector/rules/core.json"
             }
           },
           {
@@ -1106,7 +1106,7 @@
           {
             "tool": "Write",
             "input": {
-              "file_path": "/repo/.Kanit/rules.json",
+              "file_path": "/repo/.Raynsis-Inspector/rules.json",
               "content": "{}"
             }
           }
@@ -1149,8 +1149,8 @@
         "PowerShell"
       ],
       "field": "command",
-      "pattern": "(?i)(?:>>?\\|?\\s*[\\\"']?[^\\s;&|\\\"'<>()]*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.kanit(?:/|(?=[\\s;&|\\\"')`{}]|$))))|(?:\\btee\\b(?:(?!\\btee\\b)[^;&|\\n])*?\\s[\\\"']?[^\\s;&|\\\"']*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.kanit(?:/|(?=[\\s;&|\\\"')`{}]|$))))|(?:(?:(?:^|[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:sed\\s+(?:-[^\\s;&|]*\\s+)*?(?:-[a-zA-Z]*i|--in-place)|perl\\s+-[a-zA-Z]*i|truncate|chmod|chown|chflags|rm|rmdir|unlink|shred|trash|mv)\\b(?:(?!(?:(?:[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:sed\\s+(?:-[^\\s;&|]*\\s+)*?(?:-[a-zA-Z]*i|--in-place)|perl\\s+-[a-zA-Z]*i|truncate|chmod|chown|chflags|rm|rmdir|unlink|shred|trash|mv)\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.kanit(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))|(?:(?:(?:^|[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:cp|ln|install|rsync)\\b(?:(?!(?:(?:[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:cp|ln|install|rsync)\\b)[^;&|\\n])*?\\s[\\\"']?[^\\s;&|\\\"']*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.kanit(?:/|(?=[\\s;&|\\\"')`{}]|$)))[^\\s;&|\\\"']*[\\\"']?\\s*(?:$|[;&|\\n]))|(?:\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm(?!(?:(?!\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm|mv|clean)\\b)[^;&|\\n])*?\\s--cached\\b)|mv|clean)\\b(?:(?!\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm|mv|clean)\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.kanit(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))|(?:\\bclaude(?:-code)?(?:@[\\w.^~-]+)?\\s+plugins?\\s+(?:disable|uninstall|remove|marketplace\\s+(?:remove|rm))\\b)|(?:\\bfind\\b(?=(?:(?!\\bfind\\b)[^;&|\\n])*?\\s-(?:delete|exec\\s+rm)\\b)(?:(?!\\bfind\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.kanit(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))",
-      "message": "Writing to guardrail files (hook settings, hook scripts, installed plugins, .kanit/) from the shell is blocked. Ask the human to make this change by hand.",
+      "pattern": "(?i)(?:>>?\\|?\\s*[\\\"']?[^\\s;&|\\\"'<>()]*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$))))|(?:\\btee\\b(?:(?!\\btee\\b)[^;&|\\n])*?\\s[\\\"']?[^\\s;&|\\\"']*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$))))|(?:(?:(?:^|[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:sed\\s+(?:-[^\\s;&|]*\\s+)*?(?:-[a-zA-Z]*i|--in-place)|perl\\s+-[a-zA-Z]*i|truncate|chmod|chown|chflags|rm|rmdir|unlink|shred|trash|mv)\\b(?:(?!(?:(?:[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:sed\\s+(?:-[^\\s;&|]*\\s+)*?(?:-[a-zA-Z]*i|--in-place)|perl\\s+-[a-zA-Z]*i|truncate|chmod|chown|chflags|rm|rmdir|unlink|shred|trash|mv)\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))|(?:(?:(?:^|[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:cp|ln|install|rsync)\\b(?:(?!(?:(?:[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:cp|ln|install|rsync)\\b)[^;&|\\n])*?\\s[\\\"']?[^\\s;&|\\\"']*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$)))[^\\s;&|\\\"']*[\\\"']?\\s*(?:$|[;&|\\n]))|(?:\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm(?!(?:(?!\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm|mv|clean)\\b)[^;&|\\n])*?\\s--cached\\b)|mv|clean)\\b(?:(?!\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm|mv|clean)\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))|(?:\\bclaude(?:-code)?(?:@[\\w.^~-]+)?\\s+plugins?\\s+(?:disable|uninstall|remove|marketplace\\s+(?:remove|rm))\\b)|(?:\\bfind\\b(?=(?:(?!\\bfind\\b)[^;&|\\n])*?\\s-(?:delete|exec\\s+rm)\\b)(?:(?!\\bfind\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))",
+      "message": "Writing to guardrail files (hook settings, hook scripts, installed plugins, .raynsis-inspector/) from the shell is blocked. Ask the human to make this change by hand.",
       "examples": {
         "hit": [
           {
@@ -1162,7 +1162,7 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "mv .kanit{,.bak}"
+              "command": "mv .raynsis-inspector{,.bak}"
             }
           },
           {
@@ -1174,7 +1174,7 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "if true; then rm -rf .kanit; fi"
+              "command": "if true; then rm -rf .raynsis-inspector; fi"
             }
           },
           {
@@ -1186,7 +1186,7 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "`rm -rf .kanit`"
+              "command": "`rm -rf .raynsis-inspector`"
             }
           },
           {
@@ -1198,7 +1198,7 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "npx @anthropic-ai/claude-code plugin disable kanit@kanit"
+              "command": "npx @anthropic-ai/claude-code plugin disable raynsis-inspector@raynsis-inspector"
             }
           },
           {
@@ -1222,13 +1222,19 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "claude plugin disable kanit@kanit"
+              "command": "claude plugin disable raynsis-inspector@raynsis-inspector"
             }
           },
           {
             "tool": "Bash",
             "input": {
-              "command": "claude plugin uninstall kanit@kanit"
+              "command": "claude plugin uninstall raynsis-inspector@raynsis-inspector"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "claude plugin disable raynsis-inspector"
             }
           },
           {
@@ -1240,7 +1246,7 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "rm -rf .kanit"
+              "command": "rm -rf .raynsis-inspector"
             }
           },
           {
@@ -1252,13 +1258,13 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "git checkout HEAD~5 -- .kanit/rules.json"
+              "command": "git checkout HEAD~5 -- .raynsis-inspector/rules.json"
             }
           },
           {
             "tool": "Bash",
             "input": {
-              "command": "find .kanit -delete"
+              "command": "find .raynsis-inspector -delete"
             }
           },
           {
@@ -1276,7 +1282,7 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "rm -rf .kanit/"
+              "command": "rm -rf .raynsis-inspector/"
             }
           },
           {
@@ -1306,13 +1312,13 @@
           {
             "tool": "Bash",
             "input": {
-              "command": "rm -rf ~/.claude/plugins/cache/kanit"
+              "command": "rm -rf ~/.claude/plugins/cache/raynsis-inspector"
             }
           },
           {
             "tool": "Bash",
             "input": {
-              "command": "echo '{}' > .KANIT/rules.json"
+              "command": "echo '{}' > .RAYNSIS-INSPECTOR/rules.json"
             }
           }
         ],
@@ -1425,14 +1431,14 @@
         "source",
         "paths"
       ],
-      "pattern": "(?i)(?:^|[\\\\/])\\.claude[\\\\/](?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks[\\\\/]|plugins[\\\\/])|(?:^|[\\\\/])\\.kanit[\\\\/]",
+      "pattern": "(?i)(?:^|[\\\\/])\\.claude[\\\\/](?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks[\\\\/]|plugins[\\\\/])|(?:^|[\\\\/])\\.raynsis-inspector[\\\\/]",
       "message": "An agent does not edit its own guardrails through an MCP file tool either. Ask the human to make this change by hand.",
       "examples": {
         "hit": [
           {
             "tool": "mcp__filesystem__write_file",
             "input": {
-              "path": "/repo/.kanit/rules.json",
+              "path": "/repo/.raynsis-inspector/rules.json",
               "content": "{}"
             }
           },
@@ -1448,13 +1454,13 @@
           {
             "tool": "mcp__filesystem__read_file",
             "input": {
-              "path": "/repo/.kanit/rules.json"
+              "path": "/repo/.raynsis-inspector/rules.json"
             }
           },
           {
             "tool": "mcp__filesystem__write_file",
             "input": {
-              "path": "/repo/docs/kanit.md",
+              "path": "/repo/docs/raynsis-inspector.md",
               "content": "x"
             }
           }

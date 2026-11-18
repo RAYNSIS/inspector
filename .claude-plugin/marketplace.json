@@ -1,16 +1,16 @@
 {
-  "name": "kanit",
-  "description": "kanit: evidence gates for coding agents.",
+  "name": "raynsis-inspector",
+  "description": "RAYNSIS Inspector: evidence gates for coding agents.",
   "owner": {
     "name": "RAYNSIS AI Workforce",
     "url": "https://github.com/RAYNSIS"
   },
   "plugins": [
     {
-      "name": "kanit",
+      "name": "raynsis-inspector",
       "source": "./",
       "description": "Block dangerous tool calls, and send back replies that claim work the transcript cannot prove.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "security",
       "tags": ["hooks", "guardrails", "audit", "evidence"]
     }

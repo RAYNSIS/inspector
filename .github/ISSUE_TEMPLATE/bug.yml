@@ -1,5 +1,5 @@
 name: Bug
-description: kanit crashed, printed an engine error, or behaved differently from the README.
+description: RAYNSIS Inspector crashed, printed an engine error, or behaved differently from the README.
 labels: ["bug"]
 body:
   - type: textarea
@@ -11,15 +11,15 @@ body:
   - type: textarea
     id: doctor
     attributes:
-      label: Output of kanit doctor
+      label: Output of raynsis-inspector doctor
       render: shell
   - type: textarea
     id: log
     attributes:
-      label: Last lines of .kanit/audit.jsonl (engine_error rows)
+      label: Last lines of .raynsis-inspector/audit.jsonl (engine_error rows)
       description: Remove secrets and private paths first.
       render: json
   - type: input
     id: version
     attributes:
-      label: kanit version, Claude Code version, Python version, OS
+      label: RAYNSIS Inspector version, Claude Code version, Python version, OS

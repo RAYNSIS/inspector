@@ -36,11 +36,11 @@ jobs:
       - name: Unit tests
         run: python -m unittest discover -s tests -t . -v
       - name: Every rule against its own examples
-        run: python -m kanit test-rules
+        run: python -m raynsis_inspector test-rules
       - name: Hook end to end (stdin JSON in, one JSON object out)
         shell: bash
         run: |
-          out=$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"rm -rf ~"},"cwd":"."}' | python bin/kanit hook)
+          out=$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"rm -rf ~"},"cwd":"."}' | python bin/raynsis-inspector hook)
           echo "$out"
           echo "$out" | python -c "import json,sys; d=json.load(sys.stdin); assert d['hookSpecificOutput']['permissionDecision'] == 'deny'"
 
@@ -59,4 +59,4 @@ jobs:
         run: |
           python -m venv /tmp/v
           /tmp/v/bin/pip install dist/*.whl
-          cd /tmp && /tmp/v/bin/kanit --version && /tmp/v/bin/kanit test-rules && /tmp/v/bin/kanit doctor
+          cd /tmp && /tmp/v/bin/raynsis-inspector --version && /tmp/v/bin/raynsis-inspector test-rules && /tmp/v/bin/raynsis-inspector doctor

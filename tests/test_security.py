@@ -11,7 +11,7 @@ from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from kanit import audit, cli, engine, transcript  # noqa: E402
+from raynsis_inspector import audit, cli, engine, transcript  # noqa: E402
 from tests.test_engine import Base, _dump, _write_transcript, human, say, tool_result, tool_use  # noqa: E402
 
 POSIX = hasattr(os, "mkfifo") and hasattr(__import__("signal"), "setitimer")
@@ -52,7 +52,7 @@ class Slowness(Base):
         slow = os.path.join(self.tmp.name, "slow.json")
         _dump({"rules": [{"id": "tool.slow", "event": "tool", "action": "deny", "tools": ["Bash"], "field": "command",
                           "pattern": "(x+x+)+y", "message": "exponential on purpose"}]}, slow)
-        os.environ["KANIT_RULES"] = slow
+        os.environ["RAYNSIS_INSPECTOR_RULES"] = slow
         budget = dict(cli.BUDGET_S)
         cli.BUDGET_S["PreToolUse"] = 0.5
         try:
@@ -83,8 +83,8 @@ class Slowness(Base):
 @unittest.skipUnless(POSIX, "FIFOs are POSIX only")
 class SpecialFiles(Base):
     def test_fifo_as_project_rules_is_an_error_not_a_hang(self):
-        os.makedirs(os.path.join(self.tmp.name, ".kanit"))
-        os.mkfifo(os.path.join(self.tmp.name, ".kanit", "rules.json"))
+        os.makedirs(os.path.join(self.tmp.name, ".raynsis-inspector"))
+        os.mkfifo(os.path.join(self.tmp.name, ".raynsis-inspector", "rules.json"))
         t = time.time()
         rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Bash",
                              "tool_input": {"command": "rm -rf ~"}, "cwd": self.tmp.name})
@@ -125,9 +125,9 @@ class Robustness(Base):
             buf.getvalue().encode("ascii")
 
     def test_broken_project_file_never_disarms_core_rules(self):
-        os.makedirs(os.path.join(self.tmp.name, ".kanit"))
+        os.makedirs(os.path.join(self.tmp.name, ".raynsis-inspector"))
         _dump({"disable": 5, "rules": [{"id": "tool.no-force-push", "pattern+": 5}]},
-              os.path.join(self.tmp.name, ".kanit", "rules.json"))
+              os.path.join(self.tmp.name, ".raynsis-inspector", "rules.json"))
         for _ in range(3):
             rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Bash",
                                  "tool_input": {"command": PUSH + " --force"}, "cwd": self.tmp.name})
@@ -143,8 +143,8 @@ class Robustness(Base):
 
 class Weakening(Base):
     def test_project_file_that_disables_a_core_rule_is_announced_once(self):
-        os.makedirs(os.path.join(self.tmp.name, ".kanit"))
-        _dump({"disable": ["tool.no-force-push"]}, os.path.join(self.tmp.name, ".kanit", "rules.json"))
+        os.makedirs(os.path.join(self.tmp.name, ".raynsis-inspector"))
+        _dump({"disable": ["tool.no-force-push"]}, os.path.join(self.tmp.name, ".raynsis-inspector", "rules.json"))
         payload = {"hook_event_name": "PreToolUse", "session_id": "s1", "tool_name": "Bash",
                    "tool_input": {"command": "rm -rf ~"}, "cwd": self.tmp.name}
         rc, out = self.hook(payload)
@@ -249,26 +249,27 @@ class ReleaseAudit(Base):
         self.assertTrue(engine.tool_hits(r, "Bash", {"command": "docker push org/app:1.0; echo -n done"}))
         self.assertEqual(engine.tool_hits(r, "Bash", {"command": "npm publish --dry-run"}), [])
 
-    def test_agent_cannot_switch_kanit_off_from_the_shell(self):
+    def test_agent_cannot_switch_the_inspector_off_from_the_shell(self):
         r = self.rules("tool.guardrails-read-only-shell")
-        for cmd in ("claude plugin disable kanit@kanit", "rm -rf ~/.claude/plugins", "mv ~/.claude/plugins /tmp/p",
-                    "rm -rf .kanit", "rm -rf ~/.claude/hooks"):
+        for cmd in ("claude plugin disable raynsis-inspector@raynsis-inspector",
+                    "claude plugin disable raynsis-inspector", "rm -rf ~/.claude/plugins", "mv ~/.claude/plugins /tmp/p",
+                    "rm -rf .raynsis-inspector", "rm -rf ~/.claude/hooks"):
             self.assertTrue(engine.tool_hits(r, "Bash", {"command": cmd}), cmd)
 
     def test_project_rules_follow_the_project_not_the_shell_cwd(self):
         project = os.path.join(self.tmp.name, "p")
         sub = os.path.join(project, "src", "api")
-        os.makedirs(os.path.join(project, ".kanit"))
+        os.makedirs(os.path.join(project, ".raynsis-inspector"))
         os.makedirs(sub)
         _dump({"rules": [{"id": "tool.no-prod-db", "event": "tool", "action": "deny", "tools": ["Bash"], "field": "command",
                           "pattern": "psql\\s+.*prod", "message": "replica only"}]},
-              os.path.join(project, ".kanit", "rules.json"))
-        os.environ.pop("KANIT_HOME", None)
+              os.path.join(project, ".raynsis-inspector", "rules.json"))
+        os.environ.pop("RAYNSIS_INSPECTOR_HOME", None)
         os.environ["CLAUDE_PROJECT_DIR"] = project
         rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Bash",
                              "tool_input": {"command": "psql -h prod-db"}, "cwd": sub})
         self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
-        self.assertFalse(os.path.exists(os.path.join(sub, ".kanit")))
+        self.assertFalse(os.path.exists(os.path.join(sub, ".raynsis-inspector")))
 
     def test_a_link_given_early_in_a_long_session_is_still_seen(self):
         tp = os.path.join(self.tmp.name, "t.jsonl")
@@ -334,11 +335,13 @@ class SecondAudit(Base):
         for cmd in ("cat .ENV", "cat .env.production.local", "cat .env~", "cat config/prod.env"):
             self.assertTrue(engine.tool_hits(r, "Bash", {"command": cmd}), cmd)
 
-    def test_more_ways_to_switch_kanit_off_are_denied(self):
+    def test_more_ways_to_switch_the_inspector_off_are_denied(self):
         r = self.rules("tool.guardrails-read-only-shell")
-        for cmd in ("mv ~/.claude/plugins{,.off}", "mv .kanit{,.bak}", "if true; then rm -rf .kanit; fi",
-                    "{ rm -rf ~/.claude/hooks; }", "`rm -rf .kanit`", "trash ~/.claude/plugins",
-                    "npx @anthropic-ai/claude-code plugin disable kanit@kanit", 'rm -rf "$CLAUDE_CONFIG_DIR/plugins"'):
+        for cmd in ("mv ~/.claude/plugins{,.off}", "mv .raynsis-inspector{,.bak}",
+                    "if true; then rm -rf .raynsis-inspector; fi", "{ rm -rf ~/.claude/hooks; }",
+                    "`rm -rf .raynsis-inspector`", "trash ~/.claude/plugins",
+                    "npx @anthropic-ai/claude-code plugin disable raynsis-inspector@raynsis-inspector",
+                    'rm -rf "$CLAUDE_CONFIG_DIR/plugins"'):
             self.assertTrue(engine.tool_hits(r, "Bash", {"command": cmd}), cmd)
         self.assertEqual(engine.tool_hits(r, "Bash", {"command": "git rm --cached .claude/settings.local.json"}), [])
 

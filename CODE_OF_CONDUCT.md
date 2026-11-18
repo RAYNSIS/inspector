@@ -1,6 +1,6 @@
 # Code of conduct
 
-kanit is a small project and we want it to stay a good place to work on.
+RAYNSIS Inspector is a small project and we want it to stay a good place to work on.
 
 - Be respectful and assume good intent. Disagree with ideas, not with people.
 - Keep discussions on topic and based on evidence: inputs, outputs, measurements.

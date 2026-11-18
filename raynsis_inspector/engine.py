@@ -416,7 +416,7 @@ def _turn_text(line: str, fields: list) -> str:
     try:
         data = json.loads(rest)
     except ValueError:
-        return rest.strip()  # "Bash: pytest -q" as typed to `kanit check --turn`
+        return rest.strip()  # "Bash: pytest -q" as typed to `raynsis-inspector check --turn`
     if not isinstance(data, dict):
         return rest.strip()
     return "\n".join(data[f] for f in fields if isinstance(data.get(f), str))
@@ -463,13 +463,13 @@ def decide(hits: list, event: str, stop_hook_active: bool = False):
     out = {}
     if deny and event == "tool":
         out["hookSpecificOutput"] = {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                                     "permissionDecisionReason": "kanit blocked this call:\n" + _lines(deny)}
+                                     "permissionDecisionReason": "RAYNSIS Inspector blocked this call:\n" + _lines(deny)}
     elif deny and event == "reply" and not stop_hook_active:
         out["decision"] = "block"
-        out["reason"] = ("kanit: this reply claims something the session cannot prove. "
+        out["reason"] = ("RAYNSIS Inspector: this reply claims something the session cannot prove. "
                          "Fix it before finishing:\n" + _lines(deny))
     elif deny:  # already re-prompted once: never loop, tell the human instead
         warn = deny + warn
     if warn:
-        out["systemMessage"] = "kanit warning:\n" + _lines(warn)
+        out["systemMessage"] = "RAYNSIS Inspector warning:\n" + _lines(warn)
     return out or None

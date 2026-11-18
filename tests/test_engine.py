@@ -10,7 +10,7 @@ from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from kanit import audit, cli, engine, transcript  # noqa: E402
+from raynsis_inspector import audit, cli, engine, transcript  # noqa: E402
 
 
 def _dump(obj, path):
@@ -45,8 +45,9 @@ class Base(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.old_env = dict(os.environ)
         self.old_cwd = os.getcwd()
-        os.environ["KANIT_HOME"] = os.path.join(self.tmp.name, ".kanit")
-        for k in ("KANIT_RULES", "KANIT_DISABLE", "KANIT_FAIL_CLOSED", "KANIT_SHADOW", "CLAUDE_PROJECT_DIR"):
+        os.environ["RAYNSIS_INSPECTOR_HOME"] = os.path.join(self.tmp.name, ".raynsis-inspector")
+        for k in ("RAYNSIS_INSPECTOR_RULES", "RAYNSIS_INSPECTOR_DISABLE", "RAYNSIS_INSPECTOR_FAIL_CLOSED",
+                  "RAYNSIS_INSPECTOR_SHADOW", "CLAUDE_PROJECT_DIR"):
             os.environ.pop(k, None)
 
     def tearDown(self):
@@ -100,7 +101,7 @@ class Loading(Base):
         self.assertEqual([(r["id"], r["action"]) for r in rules], [("r1", "warn")])
 
     def test_env_disable(self):
-        os.environ["KANIT_DISABLE"] = "tool.no-force-push"
+        os.environ["RAYNSIS_INSPECTOR_DISABLE"] = "tool.no-force-push"
         rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Bash",
                              "tool_input": {"command": "git push --force"}, "cwd": self.tmp.name})
         self.assertIsNone(out)
@@ -209,9 +210,9 @@ class FailLoud(Base):
         self.assertIn("ENGINE ERROR", buf.getvalue())
 
     def test_fail_closed_denies_tool_calls(self):
-        os.environ["KANIT_FAIL_CLOSED"] = "1"
-        os.environ["KANIT_RULES"] = os.path.join(self.tmp.name, "r.json")
-        _dump([], os.environ["KANIT_RULES"])
+        os.environ["RAYNSIS_INSPECTOR_FAIL_CLOSED"] = "1"
+        os.environ["RAYNSIS_INSPECTOR_RULES"] = os.path.join(self.tmp.name, "r.json")
+        _dump([], os.environ["RAYNSIS_INSPECTOR_RULES"])
         original = engine.tool_hits
         engine.tool_hits = lambda *a: 1 / 0
         try:
@@ -232,7 +233,7 @@ class PackagedAndShadow(Base):
             self.assertEqual(cli.test_rules(paths), 0)
 
     def test_shadow_logs_but_prints_nothing(self):
-        os.environ["KANIT_SHADOW"] = "1"
+        os.environ["RAYNSIS_INSPECTOR_SHADOW"] = "1"
         rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Bash",
                              "tool_input": {"command": "rm -rf ~"}, "cwd": self.tmp.name})
         self.assertIsNone(out)
@@ -241,7 +242,7 @@ class PackagedAndShadow(Base):
         self.assertTrue(hits[0]["shadow"])
 
     def test_shadow_engine_error_is_logged_not_printed(self):
-        os.environ["KANIT_SHADOW"] = "1"
+        os.environ["RAYNSIS_INSPECTOR_SHADOW"] = "1"
         buf = io.StringIO()
         with redirect_stdout(buf):
             cli.hook(io.StringIO("not json"))

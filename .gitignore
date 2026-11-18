@@ -4,5 +4,5 @@ build/
 dist/
 *.egg-info/
 .venv/
-.kanit/*.jsonl
-.kanit/failure.json
+.raynsis-inspector/*.jsonl
+.raynsis-inspector/failure.json

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/kanit\" hook",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/raynsis-inspector\" hook",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/kanit\" hook",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/raynsis-inspector\" hook",
             "timeout": 20
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/kanit\" hook",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/raynsis-inspector\" hook",
             "timeout": 20
           }
         ]
