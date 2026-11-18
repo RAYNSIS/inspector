@@ -1,0 +1,181 @@
+{
+  "rules": [
+    {
+      "id": "reply.tr.tests-pass-needs-run",
+      "kind": "evidence",
+      "lang": "tr",
+      "event": "reply",
+      "action": "deny",
+      "needs_turn_field": ["command", "prompt"],
+      "pattern": "(?i)\\b(tüm\\s+|bütün\\s+)?((?:birim|entegrasyon|uçtan\\s+uca|e2e|ui|api)\\s+)?test(ler)?(i|in|lerin)?\\s+(de\\s+)?(hepsi\\s+|tamamı\\s+)?((?:başarıyla|sorunsuz(?:ca)?|hatasız|temiz)\\s+)?(geçti|geçiyor|başarılı|yeşil)(?!\\w)(?!\\s*m[iıuü]\\b)(?!\\s+ol(?:ursa|unca|duğunda|malı|sun)\\b)",
+      "needs_turn": "(?i)(?:^|[;&|\\n(]|\\$\\(|\\bxargs\\b)(?!\\s*(?:(?:sudo|time|nice|nohup|env|command|exec|builtin)\\s+(?:-\\S+\\s+){0,4}){0,3}(?:(?:npm|pnpm|yarn|bun)\\s+(?:i|install|ci|add|remove|uninstall|ls|list|view|info|outdated|update|upgrade)|python[\\d.]*\\s+-m\\s+pip|uv\\s+(?:pip|add|sync|lock)|nl|which|type|whereis|whence|hash|pip[\\d.]*|pipx|brew|apt|apt-get|cat|less|more|head|tail|ls|ll|la|tree|find|fd|grep|egrep|fgrep|rg|ag|ack|wc|echo|printf|sed|awk|file|stat|bat|view|vi|vim|nvim|nano|emacs|code|open|cd|pushd|popd|pwd|diff|cmp|touch|mkdir|cp|mv|rm|chmod|chown|ln|du|readlink|realpath|basename|dirname|test|\\[|git|sort|uniq|cut|tr|jq|xxd|od|strings|md5|md5sum|shasum|sha256sum|wget|curl)\\b)[^;&|\\n]*?(?:pytest|py\\.test|unittest|nosetests|\\btox\\b|\\bnox\\b|\\bjest\\b|vitest|mocha|karma|jasmine|playwright|cypress|rspec|phpunit|\\bpest\\b|ctest|(?:\\b|_)tests?|\\bspecs?\\b|--test\\b|\\b(?:make|ninja)\\s+(?:-\\S+\\s+){0,4}check\\b|\\b(?:npm|pnpm|yarn|bun)\\s+(?:run\\s+)?check\\b|\\bgh\\s+(?:pr\\s+checks|run\\s+(?:view|watch)))",
+      "unless": "(?i)(koşmadım|koşturmadım|çalıştırmadım|ölçmedim|doğrulanmadı|doğrulamadım|koşulmadı|koşmadan)",
+      "message": "Testlerin geçtiğini yazdın ama bu turda test komutu çalışmadı. Testi koş ve sonucu göster ya da koşulmadığını yaz. (You said tests pass, but no test command ran in this turn.)",
+      "examples": {
+        "hit": [
+          {
+            "reply": "Testler sorunsuz geçti.",
+            "turn": []
+          },
+          {
+            "reply": "Bütün birim testleri başarıyla geçiyor, PR hazır.",
+            "turn": []
+          },
+          {
+            "reply": "Testler başarıyla geçti.",
+            "turn": []
+          },
+          {
+            "reply": "Tüm testler geçti, commit edeyim mi?",
+            "turn": []
+          },
+          {
+            "reply": "Düzeltme tamam, tüm testler geçti.",
+            "turn": [
+              "Edit: {\"file_path\": \"app.py\"}"
+            ]
+          },
+          {
+            "reply": "Testlerin hepsi geçiyor.",
+            "turn": []
+          }
+        ],
+        "miss": [
+          {
+            "reply": "Testler sorunsuz geçti mi?",
+            "turn": []
+          },
+          {
+            "reply": "Testler geçtiğinde PR açarım.",
+            "turn": []
+          },
+          {
+            "reply": "Testler başarılı olursa birleştiririm.",
+            "turn": []
+          },
+          {
+            "reply": "Tüm testler geçti.",
+            "turn": [
+              "Bash: {\"command\": \"make test\"}"
+            ]
+          },
+          {
+            "reply": "Testleri bu turda koşmadım; testler geçti mi doğrulanmadı.",
+            "turn": []
+          },
+          {
+            "reply": "Parser için bir test yazalım.",
+            "turn": []
+          },
+          {
+            "reply": "Testler geçti.",
+            "turn": [
+              "Bash: {\"command\": \"bash scripts/release.sh > /tmp/test361.txt; grep -c '^ok' /tmp/test361.txt\"}"
+            ]
+          },
+          {
+            "reply": "Testler geçti mi?",
+            "turn": []
+          },
+          {
+            "reply": "Tüm testler geçiyor mu, kontrol eder misin?",
+            "turn": []
+          }
+        ]
+      },
+      "needs_turn_tools": [
+        "Bash",
+        "PowerShell",
+        "Agent",
+        "Task"
+      ]
+    },
+    {
+      "id": "reply.tr.done-needs-action",
+      "kind": "evidence",
+      "lang": "tr",
+      "event": "reply",
+      "action": "deny",
+      "pattern": "(?i)\\b(yayınladı[mk]|yayına\\s+aldı[mk]|canlıya\\s+aldı[mk]|düzeltti[mk]|onardı[mk]|yükledi[mk]|gönderdi[mk]|birleştirdi[mk]|deploy\\s+etti[mk]|push\\s+etti[mk]|commit\\s+etti[mk]|commitledi[mk]|push['’]?ladı[mk]|merge\\s+etti[mk]|merge['’]?ledi[mk]|(?:paket\\w*|bağımlılık\\w*|kütüphane\\w*|eklenti\\w*|modül\\w*|sürüm\\w*|araç\\w*|aracı|sunucu\\w*|ortam\\w*|kanca\\w*)(?:\\s+ile)?\\s+kurdu[mk]|kurulumu\\s+(?:yaptı[mk]|tamamladı[mk])|yayınlandı|yayına\\s+alındı|canlıya\\s+alındı|düzeltildi|gönderildi)\\b(?!\\s*m[iıuü]\\b)",
+      "needs_turn": ".",
+      "unless": "(?i)\\b(önceki\\s+turda|daha\\s+önce|dün|geçen\\s+(?:tur(?:da)?|hafta|ay|yıl|sefer)|geçenlerde|evvelsi\\s+gün|\\d+\\s+(?:gün|hafta|ay|yıl)\\s+önce)\\b",
+      "message": "Bitmiş iş bildirdin ama bu turda hiçbir araç çalışmadı. İşi yap ve çıktısını göster ya da neyin beklediğini yaz. (You claimed finished work, but no tool ran in this turn.)",
+      "examples": {
+        "hit": [
+          {
+            "reply": "Sürümü yayınladık.",
+            "turn": []
+          },
+          {
+            "reply": "Düzeltmeyi gönderdik.",
+            "turn": []
+          },
+          {
+            "reply": "Paketi kurdum.",
+            "turn": []
+          },
+          {
+            "reply": "Commit ettim.",
+            "turn": []
+          },
+          {
+            "reply": "Push'ladım.",
+            "turn": []
+          },
+          {
+            "reply": "Düzeltmeyi yaptım, siteyi yayınladım.",
+            "turn": []
+          },
+          {
+            "reply": "Giriş hatası düzeltildi.",
+            "turn": []
+          },
+          {
+            "reply": "Teklifi müşteriye gönderdim.",
+            "turn": []
+          }
+        ],
+        "miss": [
+          {
+            "reply": "Bu hatayı geçen hafta düzelttim.",
+            "turn": []
+          },
+          {
+            "reply": "Bu cümleyi yanlış kurdum, şöyle düzelteyim:",
+            "turn": []
+          },
+          {
+            "reply": "Kafamda bir plan kurdum ama henüz uygulamadım.",
+            "turn": []
+          },
+          {
+            "reply": "Hayal kurdum diyelim, gerçek ne?",
+            "turn": []
+          },
+          {
+            "reply": "Hata düzeltildi mi?",
+            "turn": []
+          },
+          {
+            "reply": "Düzeltildi mi diye kontrol edeyim mi?",
+            "turn": []
+          },
+          {
+            "reply": "Siteyi yayınladım.",
+            "turn": [
+              "Bash: {\"command\": \"./deploy.sh\"}"
+            ]
+          },
+          {
+            "reply": "Yayınlayayım mı?",
+            "turn": []
+          },
+          {
+            "reply": "Bunu daha önce düzelttim.",
+            "turn": []
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# "kanit" on PyPI belongs to an unrelated 2014 project, so the distribution is kanit-gates;
+# the command and the import name are both `kanit`.
+name = "kanit-gates"
+dynamic = ["version"]
+description = "Evidence gates for coding agents: block dangerous tool calls and send back claims the transcript cannot prove."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "RAYNSIS AI Workforce" }]
+keywords = ["claude-code", "hooks", "guardrails", "agent-governance", "audit", "coding-agents", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/RAYNSIS/kanit"
+Issues = "https://github.com/RAYNSIS/kanit/issues"
+Changelog = "https://github.com/RAYNSIS/kanit/blob/main/CHANGELOG.md"
+
+[project.scripts]
+kanit = "kanit.cli:main"
+
+[tool.setuptools]
+packages = ["kanit"]
+
+[tool.setuptools.dynamic]
+version = { attr = "kanit.__version__" }
+
+[tool.setuptools.package-data]
+kanit = ["rules/*.json"]

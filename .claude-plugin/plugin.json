@@ -1,0 +1,13 @@
+{
+  "name": "kanit",
+  "version": "0.1.0",
+  "description": "Evidence gates for Claude Code: block dangerous tool calls, and send back replies that claim work the transcript cannot prove.",
+  "author": {
+    "name": "RAYNSIS AI Workforce",
+    "url": "https://github.com/RAYNSIS"
+  },
+  "homepage": "https://github.com/RAYNSIS/kanit",
+  "repository": "https://github.com/RAYNSIS/kanit",
+  "license": "Apache-2.0",
+  "keywords": ["hooks", "guardrails", "agent-governance", "evidence", "audit", "security"]
+}

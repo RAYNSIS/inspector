@@ -1,0 +1,26 @@
+name: Miss
+description: A rule stayed quiet on something it is meant to stop.
+labels: ["miss"]
+body:
+  - type: input
+    id: rule
+    attributes:
+      label: Rule id (or "new rule")
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Exact input and kanit check output
+      description: Remove secrets and private paths first.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: What happened because it was missed
+  - type: input
+    id: version
+    attributes:
+      label: kanit version, Claude Code version, OS
