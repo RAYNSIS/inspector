@@ -95,7 +95,7 @@ pass: no rule fired (20 rules checked)
 | `tool.guardrails-read-only-shell` | tool | deny | Writing to guardrail files (hook settings, hook scripts, installed plugins, .raynsis-inspector/) from the shell is blocked. |
 | `tool.guardrails-read-only-mcp` | tool | deny | An agent does not edit its own guardrails through an MCP file tool either. |
 | `tool.no-test-skip` | tool | warn | This edit marks an existing test as skipped or expected to fail. |
-| `tool.no-test-file-delete` | tool | warn | This deletes test files. |
+| `tool.no-test-file-delete` | tool | warn | This deletes or empties test files, or moves them where the test runner will not find them. |
 | `tool.no-test-function-delete` | tool | warn | This edit removes an existing test. |
 | `reply.tests-pass-needs-run` | reply | deny | You said tests pass, but no test command ran in this turn. |
 | `reply.build-passes-needs-run` | reply | deny | You said the build, type check or lint passes, but none of them ran in this turn. |
@@ -219,8 +219,13 @@ Environment variables, set by the human for the Claude Code process:
 
 The agent cannot set these variables. The guardrail rules deny its common ways of changing the rest:
 editing, moving or deleting `.raynsis-inspector/`, hook settings, hook scripts or installed plugins, restoring them
-with git, and `claude plugin disable` or `uninstall`. They read command text, so an interpreter
+with git, and `claude plugin disable` or `uninstall`. The running engine and its packaged rules count as
+guardrails too, wherever they are installed (a pip install, a plugin checkout): Edit and Write on them are
+denied, and so is `pip uninstall raynsis-inspector`. The shell rules read command text, so an interpreter
 one-liner that writes the file is not caught (see Known gaps).
+
+`failure.json` (the warning throttle) lives in the project, so nothing in it is trusted: a file shipped with
+a cloned repository can add a warning, never silence one.
 
 ## Audit and stats
 
@@ -257,6 +262,11 @@ Before release we measured false alarms on real traffic:
   right: a link in a reply that never appeared in its session. One was a false alarm: a heredoc that only
   mentioned a `*.env` file name (the mention gap under Known gaps). The audit fixes changed no result on
   this traffic: the rules before and after them gave the same two hits.
+- **0.2.2 security pass.** A source review of the engine and every rule, each candidate checked with a
+  local probe before it counted. Fixed: `npm publish --dry-run=false` and `gh release create -n "notes"`
+  were excused as dry runs; shell rules did not apply to the `Monitor` tool, which also runs a command;
+  `rm ~ -rf`, `find ~ -delete` and PowerShell `Remove-Item -Recurse ~` passed the home-directory rule;
+  a planted `failure.json` could silence the engine-error warning. See the changelog for the full list.
 - **0.2.1 replay.** The two test-deletion rules added in 0.2.1, replayed over the 398 latest transcripts
   (2,797 shell commands, 269 file edits): 0 hits, so no false alarm on our traffic and no agent caught
   deleting a test in it either.
@@ -289,6 +299,10 @@ Two lessons shaped the code:
   encoding, a script file, a glob or a variable such as `cat .en?` or `rm -rf $d`,
   `python -c "open('.claude/settings.json', 'w')"`). Publishing through a wrapper we do not list (`npx np`) is not caught,
   and a command that deletes a whole tree by design (`git clean -fdx`) also deletes `.raynsis-inspector/` logs.
+  Deploy tools (`vercel --prod`, `terraform apply`, `kubectl apply`), `git push --delete` and dumping the
+  environment (`env`, `printenv`) are outside the packaged rules: add a project rule if you need them.
+  Shell rules name the tools they read (`Bash`, `PowerShell`, `Monitor`); a new tool that runs commands is
+  not covered until it is listed.
   The rules catch mistakes; they are not a sandbox. Run untrusted code in a real sandbox.
 - Evidence means a matching tool call ran in this turn, not that it succeeded: a failing `pytest` run
   still counts as "ran". The agent still has to report the result honestly. A subagent whose prompt

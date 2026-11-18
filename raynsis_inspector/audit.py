@@ -10,11 +10,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 import sys
 import tempfile
 import time
 
 WARN_EVERY_S = 600
+STATE_MAX_BYTES = 1024 * 1024  # failure.json above this is ignored
 ROTATE_BYTES = 20 * 1024 * 1024  # a log above this is moved to <name>.1 (one generation kept)
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 
@@ -96,27 +98,38 @@ def log_eval(session: str, event: str, evaluated: list, hits: list, **extra) -> 
     _append("evals.jsonl", dict({"session": session, "event": event, "evaluated": evaluated, "hits": hits}, **extra))
 
 
+def _past(v, now: float) -> float:
+    """A stored time, or 0 when it is not a number or lies in the future (nan and inf included)."""
+    return float(v) if type(v) in (int, float) and 0 <= v <= now else 0.0
+
+
 def _throttle(key: str, now: float) -> tuple:
-    """Count events per hour under `key`; return (show_warning_now, count_last_hour)."""
+    """Count events per hour under `key`; return (show_warning_now, count_last_hour).
+
+    failure.json sits inside the project, so a cloned repository can ship one. Nothing in it is trusted:
+    a time in the future, a wrong type or an oversized or special file all read as "never warned", so a
+    planted file can add a warning but can never silence one."""
     path = os.path.join(home(), "failure.json")
+    state = {}
     try:
-        with open(path, encoding="utf-8") as f:
-            state = json.load(f)
-        if not isinstance(state, dict):
-            state = {}
-    except (OSError, ValueError):
+        st = os.stat(path)
+        if stat.S_ISREG(st.st_mode) and st.st_size <= STATE_MAX_BYTES:  # not a device, a FIFO or a huge file
+            with open(path, encoding="utf-8", errors="replace") as f:
+                loaded = json.loads(f.read(STATE_MAX_BYTES + 1))
+            if isinstance(loaded, dict):
+                state = {k: v for k, v in loaded.items() if isinstance(v, dict)}
+    except (OSError, ValueError, RecursionError):
         state = {}
-    s = state.get(key) if isinstance(state.get(key), dict) else {}
-    if now - s.get("last", 0) > 3600:
-        s["count"] = 0
-    s["count"] = s.get("count", 0) + 1
-    s["last"] = now
-    show = now - s.get("last_warned", 0) > WARN_EVERY_S
-    if show:
-        s["last_warned"] = now
+    old = state.get(key, {})
+    last, last_warned = _past(old.get("last"), now), _past(old.get("last_warned"), now)
+    count = old.get("count")
+    if type(count) is not int or not 0 <= count < 10 ** 9 or now - last > 3600:
+        count = 0
+    show = now - last_warned > WARN_EVERY_S
+    s = {"count": count + 1, "last": now, "last_warned": now if show else last_warned}
     state[key] = s
     if len(state) > 200:  # keep the newest keys only
-        state = dict(sorted(state.items(), key=lambda kv: -(kv[1].get("last", 0) if isinstance(kv[1], dict) else 0))[:100])
+        state = dict(sorted(state.items(), key=lambda kv: -_past(kv[1].get("last"), now))[:100])
     try:
         ensure_home()
         fd, tmp = tempfile.mkstemp(dir=home(), prefix=".failure-")
@@ -128,7 +141,7 @@ def _throttle(key: str, now: float) -> tuple:
             sys.stderr.write("RAYNSIS Inspector: failure state write failed: %r\n" % e)
         except Exception:
             pass
-    return show, s["count"]
+    return show, count + 1
 
 
 def _key(kind: str, text: str) -> str:

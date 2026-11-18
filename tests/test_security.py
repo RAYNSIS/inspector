@@ -349,7 +349,10 @@ class SecondAudit(Base):
         # was quadratic: 60 KB of "dd " took 41 s, of PUSH + " -" 14 s, so only the time budget stopped them
         rules, _ = engine.load_rules(cli.packaged_rules())
         tool_rules = [r for r in rules if r["event"] == "tool" and engine.applies(r, "tool", "Bash")]
-        for unit in ("dd ", PUSH + " -", "git -a ", "tee ", "find .claude ", "cu" + "rl x | ", "rm -rf x "):
+        for unit in ("dd ", PUSH + " -", "git -a ", "tee ", "find .claude ", "cu" + "rl x | ", "rm -rf x ",
+                     # 0.2.2: the first drafts of these alternatives were quadratic (20 s on 60 KB)
+                     "rm ~ x ", "chmod 644 ", "chmod -x a ", "cargo publish x ", "Remove-Item -r x ", "find ~ x ",
+                     "find tests x ", "mv a b ", "cp /dev/null ", ": > x ", "pip x "):
             cmd = unit * (60000 // len(unit))
             t = time.time()
             engine.tool_hits(tool_rules, "Bash", {"command": cmd})

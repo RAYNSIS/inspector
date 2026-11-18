@@ -102,6 +102,38 @@ def with_prior(tool_input: dict) -> dict:
         return tool_input
 
 
+GUARD_RULE = "tool.guardrails-read-only"
+
+
+def _own_roots() -> list:
+    """Where the running RAYNSIS Inspector lives: the package itself (engine and packaged rules) and, in a plugin
+    checkout, the hook wiring next to it. A pip install or a `--plugin-dir` checkout is not under
+    .claude/plugins/, so the path pattern of the guardrail rule alone would not cover it."""
+    pkg = os.path.dirname(os.path.abspath(__file__))
+    roots = [pkg]
+    top = os.path.dirname(pkg)
+    if os.path.isfile(os.path.join(top, ".claude-plugin", "plugin.json")):
+        roots.extend(os.path.join(top, d) for d in ("hooks", "bin", ".claude-plugin"))
+    return [os.path.normcase(os.path.realpath(r)) for r in roots]
+
+
+def own_file(tool_input: dict) -> str:
+    """The file_path of this call when it points into the running RAYNSIS Inspector itself, else ""."""
+    roots = None
+    for name in ("file_path", "notebook_path"):
+        p = tool_input.get(name)
+        if not isinstance(p, str) or not p:
+            continue
+        try:
+            real = os.path.normcase(os.path.realpath(p))
+        except (OSError, ValueError):
+            continue
+        roots = roots or _own_roots()
+        if any(real == r or real.startswith(r + os.sep) for r in roots):
+            return p
+    return ""
+
+
 def weakened(rules: list) -> list:
     """Packaged rules that project files or RAYNSIS_INSPECTOR_RULES turned off or changed (RAYNSIS_INSPECTOR_DISABLE is the
     human's own switch and is not counted). The agent may find a way to write .raynsis-inspector/rules.json, so
@@ -147,6 +179,11 @@ def run_hook(payload: dict) -> int:
         if any(r.get("only_added") or r.get("only_removed") for r in applicable):
             tool_input = with_prior(tool_input)
         hits = engine.tool_hits(applicable, tool, tool_input)
+        guard = next((r for r in applicable if r["id"] == GUARD_RULE), None)
+        if guard is not None and all(r is not guard for r, _ in hits):
+            own = own_file(tool_input)  # the engine and its packaged rules are guardrails wherever they are installed
+            if own:
+                hits.append((guard, own))
     elif event_name in ("Stop", "SubagentStop"):
         event = "reply"
         applicable = [r for r in rules if engine.applies(r, event)]

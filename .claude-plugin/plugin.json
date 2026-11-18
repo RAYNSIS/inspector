@@ -1,6 +1,6 @@
 {
   "name": "raynsis-inspector",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Evidence gates for Claude Code: block dangerous tool calls, and send back replies that claim work the transcript cannot prove.",
   "author": {
     "name": "RAYNSIS AI Workforce",

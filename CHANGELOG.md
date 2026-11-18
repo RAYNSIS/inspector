@@ -4,6 +4,48 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.2
+
+Security pass: a source review of the engine and all 20 rules. Every item below was reproduced with a
+local probe first, then fixed with examples and tests.
+
+Rules that could be passed with an ordinary command:
+
+- `tool.no-package-publish` excused anything containing `--dry-run` or ` -n `. `npm publish --dry-run=false`,
+  `gh release create v1 -n "notes"` (`-n` is `--notes`), `npm publish # --dry-run` and a quoted
+  `'--dry-run'` were all let through as dry runs. `-n` now counts only for `cargo publish`, `=false` is a
+  real publish, and a flag inside a comment or quotes is ignored. `cargo publish -n` at the end of a
+  command is no longer denied.
+- Shell rules listed `Bash` and `PowerShell` only. The `Monitor` tool also runs a shell command, and
+  `rm -rf ~`, a force push or a publish through it passed every rule. All eight shell rules now list it.
+- `tool.no-recursive-delete-home` missed `rm ~ -rf` (flags last, GNU), `rm -rf $HOME/..`,
+  `find ~ -delete`, `find / -exec rm` and PowerShell (`Remove-Item -Recurse -Force ~`,
+  `rm -r -fo $env:USERPROFILE`, `Remove-Item C:\ -Recurse`). A `find` narrowed by `-name`, `-mtime`,
+  `-empty` and the like is left alone.
+- `tool.no-hook-bypass` now also denies removing or disarming the hook itself: `rm .git/hooks/pre-commit`,
+  `chmod -x .git/hooks/pre-commit`, `mv .husky .husky.off`. `*.sample` hooks and `chmod +x` are fine.
+- `tool.no-test-file-delete` now also warns on emptying a test file (`: > tests/test_a.py`,
+  `truncate -s 0`, `cp /dev/null`, `echo '' >`), `shred`, moving it out of the runner's sight
+  (`mv tests/test_a.py /tmp/`, renaming it to a non-test name) and `find tests ... -delete`.
+- `tool.guardrails-read-only-shell` now also denies `dd of=`, `curl -o` and `wget -O` into guardrail
+  files, and `pip uninstall raynsis-inspector`.
+- `tool.no-secret-files` now also covers `~/.config/gh/hosts.yml` and `~/.docker/config.json`.
+
+Engine:
+
+- The running package is a guardrail wherever it is installed. `tool.guardrails-read-only` matched
+  `.claude/plugins/` paths only, so with a pip install or a `--plugin-dir` checkout the agent could edit
+  `rules/core.json` or `engine.py` with the Edit tool, and no "rules were weakened" notice followed
+  because the notice compares against that same file. Edit, Write, MultiEdit and NotebookEdit on the
+  running package (and on a checkout's `hooks/`, `bin/`, `.claude-plugin/`) are now denied.
+- `failure.json` is no longer trusted. It lives in the project, so a cloned repository can ship one:
+  timestamps in the future silenced the engine-error warning for good, and a file with mixed types
+  crashed the throttle and with it the hook. Future times, wrong types, oversized files and links to
+  devices now read as "never warned".
+
+Not changed, by design (see Known gaps in the README): deploy tools, `git push --delete`, `env` and
+`printenv`, and anything hidden behind `eval`, a variable, a glob or an interpreter one-liner.
+
 ## 0.2.1
 
 Two warn rules for the agent that turns a failing suite green by deleting the test.
