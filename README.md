@@ -36,9 +36,11 @@ The plugin needs `python3` on your `PATH`. Nothing else is installed.
 To use the `kanit` command outside Claude Code (rule checks, stats):
 
 ```
-git clone https://github.com/RAYNSIS/kanit && cd kanit
-pip install .
+pip install kanit-gates
 ```
+
+The package on PyPI is `kanit-gates`; the command and the module are `kanit`. From a clone of this
+repository, `pip install .` installs the same thing.
 
 ## What it does
 
@@ -284,7 +286,8 @@ Two lessons shaped the code:
   (`python3 -c "print(open('tests/a.py').read())"`); kanit does not read what the subagent did.
 - A link the agent typed into a shell command counts as seen, and so does a link it tried to fetch
   even if the fetch failed.
-- Windows is untested. Hooks run through Git Bash or PowerShell and need `python3` on `PATH`.
+- Windows: the tests pass in CI on Python 3.9 to 3.14, but kanit has not been tried in a live Claude Code
+  session on Windows. Hooks run through Git Bash or PowerShell and need `python3` on `PATH`.
 
 ## Contributing
 
