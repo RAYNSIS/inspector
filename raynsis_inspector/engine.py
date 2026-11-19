@@ -8,7 +8,7 @@ import stat
 from urllib.parse import urlsplit
 
 EVENTS = ("tool", "reply")
-ACTIONS = ("deny", "warn")
+ACTIONS = ("deny", "ask", "warn")
 CHECKS = ("urls_seen",)
 REGEX_KEYS = ("pattern", "unless", "needs_turn", "unless_url", "tool_pattern")
 STR_KEYS = ("id", "event", "action", "message", "check") + REGEX_KEYS
@@ -43,6 +43,8 @@ def validate(rule) -> list:
         errs.append("%s: event must be one of %s" % (rid, "/".join(EVENTS)))
     if rule["action"] not in ACTIONS:
         errs.append("%s: action must be one of %s" % (rid, "/".join(ACTIONS)))
+    elif rule["action"] == "ask" and rule["event"] != "tool":
+        errs.append("%s: action 'ask' is for tool rules only (a reply has no permission prompt)" % rid)
     if rule.get("check") and rule["check"] not in CHECKS:
         errs.append("%s: unknown check %r" % (rid, rule["check"]))
     if not rule.get("pattern") and not rule.get("check"):
@@ -471,14 +473,35 @@ def _lines(hits: list) -> str:
     return "\n".join('- [%s] %s (matched: "%s")' % (r["id"], r["message"], ex[:80]) for r, ex in hits)
 
 
-def decide(hits: list, event: str, stop_hook_active: bool = False):
-    """Turn hits into the Claude Code hook JSON, or None when nothing fired."""
+# Permission modes in which Claude Code shows the human the prompt an "ask" asks for. Measured 19.11.2026: in
+# bypassPermissions a Write under .claude/ went through although a hook returned "ask" (a Write to an ordinary
+# path was stopped). There, in dontAsk and in a mode we do not know, an "ask" rule denies instead.
+ASK_MODES = ("default", "acceptEdits", "plan", "auto")
+NO_PROMPT = ("This would be a permission prompt for the human, but in permission mode %r Claude Code may run the call "
+             "without one, so it is denied. To make this change, the human switches to another permission mode "
+             "(Shift+Tab) and asks again, or makes it by hand.")
+
+
+def decide(hits: list, event: str, stop_hook_active: bool = False, mode: str = "default"):
+    """Turn hits into the Claude Code hook JSON, or None when nothing fired.
+
+    mode: the session's permission_mode from the hook payload; it decides whether an "ask" can be an ask."""
     deny = [h for h in hits if h[0]["action"] == "deny"]
+    ask = [h for h in hits if h[0]["action"] == "ask"]
     warn = [h for h in hits if h[0]["action"] == "warn"]
     out = {}
+    no_prompt = ""
+    if ask and event == "tool" and mode not in ASK_MODES:
+        deny, ask = deny + ask, []
+        no_prompt = "\n" + NO_PROMPT % (mode or "unknown")
     if deny and event == "tool":
         out["hookSpecificOutput"] = {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                                     "permissionDecisionReason": "RAYNSIS Inspector blocked this call:\n" + _lines(deny)}
+                                     "permissionDecisionReason": "RAYNSIS Inspector blocked this call:\n" + _lines(deny)
+                                     + no_prompt}
+    elif ask and event == "tool":
+        # Claude Code shows the human a permission prompt; with nobody to answer (claude -p) the call is denied
+        out["hookSpecificOutput"] = {"hookEventName": "PreToolUse", "permissionDecision": "ask",
+                                     "permissionDecisionReason": "RAYNSIS Inspector asks you first:\n" + _lines(ask)}
     elif deny and event == "reply" and not stop_hook_active:
         out["decision"] = "block"
         out["reason"] = ("RAYNSIS Inspector: this reply claims something the session cannot prove. "

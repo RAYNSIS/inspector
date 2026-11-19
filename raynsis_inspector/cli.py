@@ -215,7 +215,8 @@ def run_hook(payload: dict) -> int:
         audit.log_hit(session, event, r, excerpt, shadow=shadow())
     if shadow():
         return 0
-    out = engine.decide(hits, event, bool(payload.get("stop_hook_active"))) or {}
+    mode = payload.get("permission_mode")
+    out = engine.decide(hits, event, bool(payload.get("stop_hook_active")), mode if isinstance(mode, str) else "") or {}
     for extra in (note, _weakened_note(session)):
         if extra:
             out["systemMessage"] = (out.get("systemMessage", "") + "\n" + extra).strip()
@@ -275,7 +276,7 @@ def hook(stream=None) -> int:
 def check(kind: str, text: str, tool: str = "", tool_input=None, turn=(), seen: str = "", out=None) -> int:
     """Dry run without Claude Code: which active rules fire on this tool call or reply.
 
-    Exit code: 1 when a deny rule fires, 0 otherwise (warn hits are printed but do not fail)."""
+    Exit code: 1 when a deny or ask rule fires, 0 otherwise (warn hits are printed but do not fail)."""
     w = out or sys.stdout
     rules, errors = engine.load_rules(rule_paths(), _disabled())
     for e in errors:
@@ -290,7 +291,7 @@ def check(kind: str, text: str, tool: str = "", tool_input=None, turn=(), seen: 
         w.write('%-4s %s\n     %s\n     matched: "%s"\n' % (r["action"].upper(), r["id"], r["message"], excerpt[:80]))
     if not hits:
         w.write("pass: no rule fired (%d rules checked)\n" % len(rules))
-    return 1 if any(r["action"] == "deny" for r, _ in hits) else 0
+    return 1 if any(r["action"] in ("deny", "ask") for r, _ in hits) else 0
 
 
 def _first_sentence(msg: str) -> str:

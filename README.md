@@ -9,6 +9,8 @@ report "deployed" in a turn where no tool ran, and now and then try to edit thei
 RAYNSIS Inspector is a small Claude Code plugin that checks two moments:
 
 - **Before a tool call** (PreToolUse): a dangerous call is denied, with a reason the agent can act on.
+  An edit to the agent's own guardrails (hook settings, hook scripts, installed plugins) is put to you
+  as a permission prompt instead, so you can still change your hooks with the agent's help.
 - **Before a reply is final** (Stop, and SubagentStop for subagents): a reply that claims work the transcript cannot prove is sent back once, with what is missing.
 
 Every rule ships with examples it must fire on and examples it must stay quiet on.
@@ -35,6 +37,19 @@ claude plugin install raynsis-inspector@raynsis-inspector
 
 The plugin needs Python 3.9 or later on your `PATH`, under any of the names `python3`, `python` or `py`.
 Nothing else is installed. On Windows the hooks run through Git Bash, which comes with Git for Windows.
+
+**Pin a version.** Add `#` and a release tag to the source, and you run that release and nothing newer:
+
+```
+/plugin install raynsis-inspector --marketplace RAYNSIS/inspector#v0.3.0
+```
+
+Claude Code does not auto-update plugins from a third-party marketplace such as this one unless you turn
+auto-update on for it (`/plugin`, Marketplaces tab). Read the changelog before you move the pin.
+
+**Cost.** Measured on our test machine (macOS, Python 3.9): a tool-call check takes 61 ms median
+(95th percentile 66 ms), and a reply check on a 7.1 MB session transcript 162 ms (95th percentile 179 ms).
+The `timeout` values in `hooks/hooks.json` (10 s for a tool call, 20 s for a reply) are ceilings, not costs.
 
 ### Try it in the first minute
 
@@ -111,9 +126,9 @@ pass: no rule fired (20 rules checked)
 | `tool.no-curl-pipe-shell` | tool | deny | Piping a download straight into a shell or interpreter runs unreviewed code. |
 | `tool.no-secret-files` | tool | deny | Secret files stay out of the agent's context. |
 | `tool.no-secret-in-command` | tool | deny | A live-looking secret is written into this command or file, where shell history, logs or git will keep it. |
-| `tool.guardrails-read-only` | tool | deny | An agent does not edit its own guardrails: hook settings, hook scripts, installed plugins or RAYNSIS Inspector's rules and logs. |
-| `tool.guardrails-read-only-shell` | tool | deny | Writing to guardrail files (hook settings, hook scripts, installed plugins, .raynsis-inspector/) from the shell is blocked. |
-| `tool.guardrails-read-only-mcp` | tool | deny | An agent does not edit its own guardrails through an MCP file tool either. |
+| `tool.guardrails-read-only` | tool | ask | This edits a guardrail: hook settings, hook scripts, installed plugins or RAYNSIS Inspector's rules and logs. |
+| `tool.guardrails-read-only-shell` | tool | ask | This shell command writes to guardrail files: hook settings, hook scripts, installed plugins or .raynsis-inspector/. |
+| `tool.guardrails-read-only-mcp` | tool | ask | This MCP file tool edits a guardrail file: hook settings, hook scripts, installed plugins or .raynsis-inspector/. |
 | `tool.no-test-skip` | tool | warn | This edit marks an existing test as skipped or expected to fail. |
 | `tool.no-test-file-delete` | tool | warn | This deletes or empties test files, or moves them where the test runner will not find them. |
 | `tool.no-test-function-delete` | tool | warn | This edit removes an existing test. |
@@ -134,6 +149,14 @@ The full patterns and their examples are in [`raynsis_inspector/rules/core.json`
   that the replaced text did not have, so an existing skipped test does not trip `tool.no-test-skip`.
   `"only_removed": true` is the mirror: it fires when an edit leaves fewer matches than it replaced,
   so deleting a test function trips `tool.no-test-function-delete` and renaming one does not.
+- **Guardrail rules ask.** The three `tool.guardrails-read-only` rules return `ask`: Claude Code shows you a
+  permission prompt labelled `[plugin:raynsis-inspector]` with the reason, and the call runs only if you
+  approve it. With nobody to answer (`claude -p`), Claude Code denies the call and the agent reads the reason.
+  This holds in the `default`, `acceptEdits`, `plan` and `auto` permission modes. In `bypassPermissions` Claude Code
+  let a Write under `.claude/` through even though a hook returned `ask` (we measured it with `claude -p`; the same
+  `ask` did stop a Write to an ordinary path), so in that mode, in `dontAsk` and in any mode the hook does not
+  recognise, these rules deny as before and say how to approve the change. When one call matches both a `deny`
+  and an `ask` rule, `deny` wins.
 - **Reply rules** match a claim in the final reply, then look for evidence among the tool calls made
   in this turn (since the last human message). "Tests pass" needs a test command run through a shell
   or a subagent; "the build passes" needs a build, type check or lint command; "I've deployed" needs at
@@ -164,7 +187,7 @@ The full patterns and their examples are in [`raynsis_inspector/rules/core.json`
   prior file content 2 MB) and special files (FIFOs, devices) are never read. The packaged patterns are
   linear with no length limit: a scan stops only where its own start repeats, so the worst 60 KB command
   we could build takes under 0.3 s per rule on our test machine, and a long argument list does not hide
-  the end of a command. The budget is for project rules that are not linear. The timer needs a POSIX system; on Windows the hook timeout is the only limit.
+  the end of a command. The budget is for project rules that are not linear. The timer needs a POSIX system. On Windows the hook timeout in `hooks/hooks.json` is the only limit, and when it runs out Claude Code lets the call through; a watchdog thread is no substitute, because a running regex does not let it run until the match ends (checked on Python 3.9).
 
 ## Configure
 
@@ -210,7 +233,7 @@ A new rule:
 |---|---|
 | `id`, `message` | required; the message is what the agent (deny) or the human (warn) reads |
 | `event` | `tool` or `reply` |
-| `action` | `deny` or `warn` |
+| `action` | `deny`, `ask` (tool rules: a permission prompt for the human) or `warn` |
 | `tools` | tool names the rule applies to (tool rules; default all) |
 | `tool_pattern` | regex on the tool name, for tool families such as MCP servers (`^mcp__`) |
 | `field` | input field or list of fields to match (tool rules; default the whole input as JSON) |
@@ -237,12 +260,31 @@ Environment variables, set by the human for the Claude Code process:
 | `RAYNSIS_INSPECTOR_HOME=/path` | where logs go (default `.raynsis-inspector/` in the project) |
 | `RAYNSIS_INSPECTOR_RULES=/a.json:/b.json` | extra rule files, loaded after the project file |
 
-The agent cannot set these variables. The guardrail rules deny its common ways of changing the rest:
-editing, moving or deleting `.raynsis-inspector/`, hook settings, hook scripts or installed plugins, restoring them
-with git, and `claude plugin disable` or `uninstall`. The running engine and its packaged rules count as
-guardrails too, wherever they are installed (a pip install, a plugin checkout): Edit and Write on them are
-denied, and so is `pip uninstall raynsis-inspector`. The shell rules read command text, so an interpreter
+The agent cannot set these variables. The guardrail rules put its common ways of changing the rest to you as
+a permission prompt: editing, moving or deleting `.raynsis-inspector/`, hook settings, hook scripts or installed
+plugins, restoring them with git, and `claude plugin disable` or `uninstall`. The running engine and its packaged
+rules count as guardrails too, wherever they are installed (a pip install, a plugin checkout): Edit and Write on
+them ask you first, and so does `pip uninstall raynsis-inspector`. The shell rules read command text, so an interpreter
 one-liner that writes the file is not caught (see Known gaps).
+
+### If you maintain your own hooks
+
+Many setups keep their own hooks in `~/.claude/hooks/` and change `settings.json` with the agent's help.
+RAYNSIS Inspector does not stop that: each such edit shows a permission prompt, and you approve the ones you asked for.
+In `bypassPermissions` mode there is no prompt to show (see "Guardrail rules ask" above), so there the edit is
+denied with a note: switch modes with Shift+Tab, or use one of the choices below.
+Two other choices, both set by you outside the session:
+
+- **A hard block, no prompt.** Put this in a file and name it in `RAYNSIS_INSPECTOR_RULES`:
+
+  ```json
+  {"rules": [{"id": "tool.guardrails-read-only", "action": "deny"},
+             {"id": "tool.guardrails-read-only-shell", "action": "deny"},
+             {"id": "tool.guardrails-read-only-mcp", "action": "deny"}]}
+  ```
+
+- **No guardrail rules at all.** `RAYNSIS_INSPECTOR_DISABLE=tool.guardrails-read-only,tool.guardrails-read-only-shell,tool.guardrails-read-only-mcp`.
+  The other rules keep working.
 
 `failure.json` (the warning throttle) lives in the project, so nothing in it is trusted: a file shipped with
 a cloned repository can add a warning, never silence one.

@@ -4,8 +4,26 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.3.0
 
+The first outside review, from someone who keeps their own hooks in `~/.claude/hooks/` and edits them with
+the agent: `tool.guardrails-read-only` made that impossible, and the only way out was to switch the rule off.
+An agent should not change its own guardrails on its own; a human approving the change is fine.
+
+- New rule action `ask` (tool rules only): Claude Code shows the human a permission prompt, labelled
+  `[plugin:raynsis-inspector]`, with the rule's reason. With nobody to answer (`claude -p`) the call is denied.
+  A `deny` in the same call still wins. A reply rule with `ask` is reported as invalid and skipped.
+- `tool.guardrails-read-only`, `-shell` and `-mcp` now `ask` instead of `deny`, with messages written for the
+  person who approves. Edits to the running engine and its packaged rules ask too.
+- `ask` only where Claude Code shows the prompt: the `default`, `acceptEdits`, `plan` and `auto` permission modes
+  (from the hook payload's `permission_mode`). Measured with `claude -p --permission-mode bypassPermissions`: a hook's
+  `ask` stopped a Write to an ordinary path but not a Write under `.claude/`, which is exactly what these rules guard.
+  So in `bypassPermissions`, `dontAsk` and any mode the hook does not recognise, an `ask` rule denies as before,
+  and the reason says how to approve the change (switch modes with Shift+Tab, or make it by hand).
+- `raynsis-inspector check` exits 1 for an `ask` hit as well as a `deny`, and prints it as `ASK`.
+- README: how to keep the old hard block (a rules file in `RAYNSIS_INSPECTOR_RULES`) or turn the three rules off;
+  how to pin a release (`RAYNSIS/inspector#v0.3.0`); the measured cost of a check (61 ms median for a tool call,
+  162 ms for a reply on a 7.1 MB transcript, on our test machine); why Windows has no timer of its own.
 - `CONTRIBUTING.md` says what to type on Windows in place of `python3`.
 - `doctor` writes its probe file with an explicit encoding.
 - README: the Windows fix of 0.2.5 is confirmed on the machine that reported it (one machine, python.org install).

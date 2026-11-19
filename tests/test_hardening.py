@@ -1,6 +1,7 @@
 """0.2.2 security pass: untrusted failure.json, the running package as a guardrail, shell rules on every shell tool."""
 from __future__ import annotations
 
+import io
 import json
 import os
 import sys
@@ -80,17 +81,19 @@ class OwnFiles(Base):
 
     def edit(self, path, tool="Edit"):
         return self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": tool, "cwd": self.tmp.name,
+                          "permission_mode": "default",
                           "tool_input": {"file_path": path, "old_string": "\"deny\"", "new_string": "\"warn\""}})
 
-    def test_editing_the_packaged_rules_is_denied(self):
+    def test_editing_the_packaged_rules_asks_the_human(self):
         rc, out = self.edit(cli.CORE_RULES)
-        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "ask")
         self.assertIn("tool.guardrails-read-only", out["hookSpecificOutput"]["permissionDecisionReason"])
 
-    def test_editing_the_engine_is_denied_for_write_too(self):
+    def test_editing_the_engine_asks_for_write_too(self):
         rc, out = self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": "Write", "cwd": self.tmp.name,
+                             "permission_mode": "default",
                              "tool_input": {"file_path": os.path.abspath(engine.__file__), "content": "def tool_hits(*a): return []\n"}})
-        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "ask")
 
     @unittest.skipUnless(hasattr(os, "symlink"), "needs symlinks")
     def test_a_link_into_the_package_is_followed(self):
@@ -100,7 +103,7 @@ class OwnFiles(Base):
         except OSError:
             self.skipTest("cannot create a symlink here")
         rc, out = self.edit(os.path.join(link, "core.json"))
-        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "ask")
 
     def test_other_files_are_left_alone(self):
         rc, out = self.edit(os.path.join(self.tmp.name, "raynsis_inspector", "rules", "core.json"))
@@ -120,13 +123,15 @@ class OwnFiles(Base):
 class EveryShellTool(Base):
     def run_cmd(self, tool, command):
         return self.hook({"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": tool, "cwd": self.tmp.name,
-                          "tool_input": {"command": command}})
+                          "permission_mode": "default", "tool_input": {"command": command}})
 
     def test_monitor_runs_a_shell_command_and_gets_the_same_rules(self):
         for command in ("rm -rf ~", "git push --force origin main", "npm publish", "git commit --no-verify -m x",
-                        "echo x > .claude/settings.json", "dd if=/dev/zero of=/dev/sda"):
+                        "dd if=/dev/zero of=/dev/sda"):
             rc, out = self.run_cmd("Monitor", command)
             self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny", command)
+        rc, out = self.run_cmd("Monitor", "echo x > .claude/settings.json")
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "ask")
 
     def test_every_rule_for_bash_also_covers_monitor(self):
         rules, _ = engine.load_rules(cli.packaged_rules())
@@ -140,6 +145,82 @@ class EveryShellTool(Base):
             self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny", command)
         for command in ("npm publish --dry-run", "cargo publish -n"):
             self.assertIsNone(self.run_cmd("Bash", command)[1], command)
+
+
+class AskTheHuman(Base):
+    """0.3.0: a guardrail edit is put to the human as a permission prompt instead of a flat deny,
+    so people who maintain their own hooks with the agent can keep doing it, one approval at a time."""
+
+    GUARD_IDS = ("tool.guardrails-read-only", "tool.guardrails-read-only-shell", "tool.guardrails-read-only-mcp")
+
+    def call(self, tool, tool_input, mode="default"):
+        payload = {"hook_event_name": "PreToolUse", "session_id": "s", "tool_name": tool, "cwd": self.tmp.name,
+                   "tool_input": tool_input}
+        if mode is not None:
+            payload["permission_mode"] = mode
+        return self.hook(payload)
+
+    def test_it_asks_only_where_claude_code_shows_the_prompt(self):
+        write = {"file_path": "/repo/.claude/settings.json", "content": "{}"}
+        for mode in ("default", "acceptEdits", "plan", "auto"):
+            self.assertEqual(self.call("Write", write, mode)[1]["hookSpecificOutput"]["permissionDecision"], "ask", mode)
+        # bypassPermissions let a Write under .claude/ through although a hook said "ask" (measured 19.11.2026)
+        for mode in ("bypassPermissions", "dontAsk", "someFutureMode", "", None, 5):
+            hso = self.call("Write", write, mode)[1]["hookSpecificOutput"]
+            self.assertEqual(hso["permissionDecision"], "deny", repr(mode))
+            self.assertIn("tool.guardrails-read-only", hso["permissionDecisionReason"], repr(mode))
+            self.assertIn("switches to another permission mode", hso["permissionDecisionReason"], repr(mode))
+
+    def test_an_ordinary_deny_has_no_mode_note(self):
+        hso = self.call("Bash", {"command": "cat .env"}, "bypassPermissions")[1]["hookSpecificOutput"]
+        self.assertEqual(hso["permissionDecision"], "deny")
+        self.assertNotIn("permission mode", hso["permissionDecisionReason"])
+
+    def test_the_three_guardrail_rules_ask(self):
+        rules = {r["id"]: r for r in engine.load_rules(cli.packaged_rules())[0]}
+        self.assertEqual([rules[i]["action"] for i in self.GUARD_IDS], ["ask"] * 3)
+        self.assertEqual(sorted(r["id"] for r in rules.values() if r["action"] == "ask"), sorted(self.GUARD_IDS))
+
+    def test_a_hook_edit_becomes_a_permission_prompt(self):
+        for tool, tool_input in (("Edit", {"file_path": "/home/u/.claude/hooks/guard.py", "old_string": "a", "new_string": "b"}),
+                                 ("Write", {"file_path": "/repo/.claude/settings.json", "content": "{}"}),
+                                 ("Bash", {"command": "cp new.json ~/.claude/settings.json"}),
+                                 ("mcp__fs__write_file", {"path": "/repo/.claude/hooks/x.sh", "content": "true"})):
+            rc, out = self.call(tool, tool_input)
+            hso = out["hookSpecificOutput"]
+            self.assertEqual((rc, hso["hookEventName"], hso["permissionDecision"]), (0, "PreToolUse", "ask"), tool)
+            self.assertTrue(hso["permissionDecisionReason"].startswith("RAYNSIS Inspector asks you first:"), tool)
+            self.assertIn("Approve it only if you asked for this change", hso["permissionDecisionReason"], tool)
+
+    def test_a_deny_in_the_same_call_wins(self):
+        rc, out = self.call("Bash", {"command": "rm -rf ~; echo x > .claude/settings.json"})
+        hso = out["hookSpecificOutput"]
+        self.assertEqual(hso["permissionDecision"], "deny")
+        self.assertIn("tool.no-recursive-delete-home", hso["permissionDecisionReason"])
+
+    def test_shadow_mode_prints_nothing_but_logs_the_hit(self):
+        os.environ["RAYNSIS_INSPECTOR_SHADOW"] = "1"
+        rc, out = self.call("Write", {"file_path": "/repo/.claude/settings.json", "content": "{}"})
+        self.assertIsNone(out)
+        rows = [r for r in audit.read_jsonl("audit.jsonl") if r.get("rule") == "tool.guardrails-read-only"]
+        self.assertEqual([(r["action"], r.get("shadow")) for r in rows], [("ask", True)])
+
+    def test_the_human_can_make_it_a_hard_deny_again(self):
+        strict = os.path.join(self.tmp.name, "strict.json")
+        _dump({"rules": [{"id": i, "action": "deny"} for i in self.GUARD_IDS]}, strict)
+        os.environ["RAYNSIS_INSPECTOR_RULES"] = strict
+        rc, out = self.call("Write", {"file_path": "/repo/.claude/settings.json", "content": "{}"})
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_ask_is_for_tool_rules_only(self):
+        self.assertEqual(engine.validate({"id": "r", "event": "reply", "action": "ask", "message": "m", "pattern": "x"}),
+                         ["r: action 'ask' is for tool rules only (a reply has no permission prompt)"])
+        self.assertEqual(engine.validate({"id": "t", "event": "tool", "action": "ask", "message": "m", "pattern": "x"}), [])
+
+    def test_check_exits_1_on_an_ask(self):
+        sink = io.StringIO()
+        self.assertEqual(cli.check("bash", "echo x > .claude/settings.json", out=sink), 1)
+        self.assertIn("ASK  tool.guardrails-read-only-shell", sink.getvalue())
 
 
 if __name__ == "__main__":

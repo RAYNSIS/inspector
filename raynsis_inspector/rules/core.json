@@ -1353,7 +1353,7 @@
       "id": "tool.guardrails-read-only",
       "kind": "safety",
       "event": "tool",
-      "action": "deny",
+      "action": "ask",
       "tools": [
         "Edit",
         "Write",
@@ -1365,7 +1365,7 @@
         "notebook_path"
       ],
       "pattern": "(?i)(?:^|[\\\\/])\\.claude[\\\\/](?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks[\\\\/]|plugins[\\\\/])|(?:^|[\\\\/])\\.raynsis-inspector[\\\\/]",
-      "message": "An agent does not edit its own guardrails: hook settings, hook scripts, installed plugins or RAYNSIS Inspector's rules and logs. Ask the human to make this change by hand.",
+      "message": "This edits a guardrail: hook settings, hook scripts, installed plugins or RAYNSIS Inspector's rules and logs. Approve it only if you asked for this change; an agent does not change its own guardrails on its own.",
       "examples": {
         "hit": [
           {
@@ -1438,7 +1438,7 @@
       "id": "tool.guardrails-read-only-shell",
       "kind": "safety",
       "event": "tool",
-      "action": "deny",
+      "action": "ask",
       "tools": [
         "Bash",
         "PowerShell",
@@ -1446,7 +1446,7 @@
       ],
       "field": "command",
       "pattern": "(?i)(?:>>?\\|?\\s*[\\\"']?[^\\s;&|\\\"'<>()]*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$))))|(?:\\btee\\b(?:(?!\\btee\\b)[^;&|\\n])*?\\s[\\\"']?[^\\s;&|\\\"']*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$))))|(?:(?:(?:^|[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:sed\\s+(?:-[^\\s;&|]*\\s+)*?(?:-[a-zA-Z]*i|--in-place)|perl\\s+-[a-zA-Z]*i|truncate|chmod|chown|chflags|rm|rmdir|unlink|shred|trash|mv)\\b(?:(?!(?:(?:[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:sed\\s+(?:-[^\\s;&|]*\\s+)*?(?:-[a-zA-Z]*i|--in-place)|perl\\s+-[a-zA-Z]*i|truncate|chmod|chown|chflags|rm|rmdir|unlink|shred|trash|mv)\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))|(?:(?:(?:^|[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:cp|ln|install|rsync)\\b(?:(?!(?:(?:[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:cp|ln|install|rsync)\\b)[^;&|\\n])*?\\s[\\\"']?[^\\s;&|\\\"']*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$)))[^\\s;&|\\\"']*[\\\"']?\\s*(?:$|[;&|\\n]))|(?:\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm(?!(?:(?!\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm|mv|clean)\\b)[^;&|\\n])*?\\s--cached\\b)|mv|clean)\\b(?:(?!\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm|mv|clean)\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))|(?:\\bclaude(?:-code)?(?:@[\\w.^~-]+)?\\s+plugins?\\s+(?:disable|uninstall|remove|marketplace\\s+(?:remove|rm))\\b)|(?:\\bfind\\b(?=(?:(?!\\bfind\\b)[^;&|\\n])*?\\s-(?:delete|exec\\s+rm)\\b)(?:(?!\\bfind\\b)[^;&|\\n])*?(?:(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$)))|(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/?(?=[\\s;&|\\\"')`{}]|$)))|(?:\\bdd\\b(?:(?!\\bdd\\b)[^;&|\\n])*?\\bof=[\\\"']?[^\\s;&|\\\"']*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$))))|(?:\\b(?:curl|wget)\\b(?:(?!\\b(?:curl|wget)\\b)[^;&|\\n])*?\\s(?:-[a-zA-Z]*o|--output(?:-document)?)[\\s=]?[\\\"']?[^\\s;&|\\\"']*(?:(?:\\.claude|\\$\\{?CLAUDE_CONFIG_DIR\\}?)/(?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks(?:/(?![^\\s;&|\\\"']*\\.(?:bak|orig)\\b)|(?=[\\s;&|\\\"')`{}]|$))|plugins(?:/|(?=[\\s;&|\\\"')`{}]|$)))|\\.raynsis-inspector(?:/|(?=[\\s;&|\\\"')`{}]|$))))|(?:\\b(?:pip[\\d.]*|pipx|uv)\\b(?:(?!\\b(?:pip[\\d.]*|pipx|uv)\\b)[^;&|\\n])*?\\buninstall\\b[^;&|\\n]*\\braynsis[-_]inspector\\b)",
-      "message": "Writing to guardrail files (hook settings, hook scripts, installed plugins, .raynsis-inspector/) from the shell is blocked. Ask the human to make this change by hand.",
+      "message": "This shell command writes to guardrail files: hook settings, hook scripts, installed plugins or .raynsis-inspector/. Approve it only if you asked for this change; an agent does not change its own guardrails on its own.",
       "examples": {
         "hit": [
           {
@@ -1788,7 +1788,7 @@
       "id": "tool.guardrails-read-only-mcp",
       "kind": "safety",
       "event": "tool",
-      "action": "deny",
+      "action": "ask",
       "tool_pattern": "(?i)^mcp__.*(write|edit|create|move|rename|delete|remove|append|patch|put|upload|save)",
       "field": [
         "path",
@@ -1800,7 +1800,7 @@
         "paths"
       ],
       "pattern": "(?i)(?:^|[\\\\/])\\.claude[\\\\/](?:settings(?:\\.local)?\\.json(?![\\w.-])|hooks[\\\\/]|plugins[\\\\/])|(?:^|[\\\\/])\\.raynsis-inspector[\\\\/]",
-      "message": "An agent does not edit its own guardrails through an MCP file tool either. Ask the human to make this change by hand.",
+      "message": "This MCP file tool edits a guardrail file: hook settings, hook scripts, installed plugins or .raynsis-inspector/. Approve it only if you asked for this change; an agent does not change its own guardrails on its own.",
       "examples": {
         "hit": [
           {
