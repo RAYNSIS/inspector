@@ -4,6 +4,12 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- `CONTRIBUTING.md` says what to type on Windows in place of `python3`.
+- `doctor` writes its probe file with an explicit encoding.
+- README: the Windows fix of 0.2.5 is confirmed on the machine that reported it (one machine, python.org install).
+
 ## 0.2.5
 
 The first report from a Windows machine: after install every tool call printed a hook error and nothing

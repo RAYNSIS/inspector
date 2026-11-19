@@ -402,7 +402,7 @@ def doctor() -> int:
     try:
         audit.ensure_home()
         probe = os.path.join(audit.home(), ".probe")
-        with open(probe, "w") as f:
+        with open(probe, "w", encoding="utf-8") as f:
             f.write("ok")
         os.remove(probe)
         print("audit log: %s (writable)" % audit.home())

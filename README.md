@@ -339,7 +339,8 @@ Two lessons shaped the code:
 - Windows: hooks run through Git Bash, Claude Code's default hook shell on Windows. The launcher (`hooks/run.sh`)
   skips the Microsoft Store `python3` shortcut and uses `python` or `py -3`; the first live Windows report
   (0.2.4, a python.org install) was that shortcut. The fix is tested in CI under Git Bash on Python 3.9 to 3.14
-  and not yet confirmed in a live session. Without Git for Windows, Claude Code runs hooks in PowerShell,
+  and was confirmed on that machine with 0.2.5: `python3` is only the shortcut there, the hook ran through
+  `python` and wrote its audit row, and no hook error appeared. Without Git for Windows, Claude Code runs hooks in PowerShell,
   which cannot run the launcher, and a failed `PreToolUse` hook then blocks the call: install Git for Windows first.
 
 ## Contributing

@@ -31,6 +31,9 @@ Paste the command and its output into the issue. Remove secrets and private path
    python3 -m unittest discover -s tests -t .
    ```
 
+   On Windows write `python` or `py -3` in place of `python3`: with the python.org installer `python3` is a
+   Microsoft Store shortcut, not an interpreter.
+
 4. If a rule's message changed, update the table in `README.md` with `python3 -m raynsis_inspector rules --markdown`
    (a test fails while they differ).
 
