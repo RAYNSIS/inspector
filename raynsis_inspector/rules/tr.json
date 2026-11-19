@@ -7,7 +7,7 @@
       "event": "reply",
       "action": "deny",
       "needs_turn_field": ["command", "prompt"],
-      "pattern": "(?i)\\b(tüm\\s+|bütün\\s+)?((?:birim|entegrasyon|uçtan\\s+uca|e2e|ui|api)\\s+)?test(ler)?(i|in|lerin)?\\s+(de\\s+)?(hepsi\\s+|tamamı\\s+)?((?:başarıyla|sorunsuz(?:ca)?|hatasız|temiz)\\s+)?(geçti|geçiyor|başarılı|yeşil)(?!\\w)(?!\\s*m[iıuü]\\b)(?!\\s+ol(?:ursa|unca|duğunda|malı|sun)\\b)",
+      "pattern": "(?i)(?:\\b(tüm\\s+|bütün\\s+)?((?:birim|entegrasyon|uçtan\\s+uca|e2e|ui|api)\\s+)?test(ler)?(i|in|lerin)?\\s+(de\\s+)?(hepsi\\s+|tamamı\\s+)?((?:başarıyla|sorunsuz(?:ca)?|hatasız|temiz)\\s+)?(geçti|geçiyor|başarılı|yeşil)|\\btest(?:ler)?(?:i|leri)?\\s+(?:de\\s+)?(?:çalıştırdı[mk]|koştu[mk]|koşturdu[mk]|yürüttü[mk])\\s*(?:[,;:]\\s*|\\s+ve\\s+)(?:hepsi\\s+|tümü\\s+|tamamı\\s+|sonuç\\s+)?(?:(?:başarıyla|sorunsuz(?:ca)?|hatasız|temiz)\\s+)?(?:geçti|geçiyor|başarılı|yeşil|temiz)|\\b\\d+\\s+test(?:in|ten|den)?\\s+(?:\\d+\\s*['’]?\\w*\\s+)?(?:hepsi\\s+|tamamı\\s+|tümü\\s+)?(?:başarıyla\\s+)?(?:geçti|başarılı|yeşil)|\\btest(?:ler|\\s+sonuçları|\\s+sonucu)?\\s*:\\s*(?:hepsi\\s+|tümü\\s+|tamamı\\s+)?(?:geçti|geçiyor|başarılı|yeşil|temiz|tamam))(?!\\w)(?!\\s*m[iıuü]\\b)(?!\\s+ol(?:ursa|unca|duğunda|malı|sun)\\b)",
       "needs_turn": "(?i)(?:^|[;&|\\n(]|\\$\\(|\\bxargs\\b)(?!\\s*(?:(?:sudo|time|nice|nohup|env|command|exec|builtin)\\s+(?:-\\S+\\s+){0,4}){0,3}(?:(?:npm|pnpm|yarn|bun)\\s+(?:i|install|ci|add|remove|uninstall|ls|list|view|info|outdated|update|upgrade)|python[\\d.]*\\s+-m\\s+pip|uv\\s+(?:pip|add|sync|lock)|nl|which|type|whereis|whence|hash|pip[\\d.]*|pipx|brew|apt|apt-get|cat|less|more|head|tail|ls|ll|la|tree|find|fd|grep|egrep|fgrep|rg|ag|ack|wc|echo|printf|sed|awk|file|stat|bat|view|vi|vim|nvim|nano|emacs|code|open|cd|pushd|popd|pwd|diff|cmp|touch|mkdir|cp|mv|rm|chmod|chown|ln|du|readlink|realpath|basename|dirname|test|\\[|git|sort|uniq|cut|tr|jq|xxd|od|strings|md5|md5sum|shasum|sha256sum|wget|curl)\\b)[^;&|\\n]*?(?:pytest|py\\.test|unittest|nosetests|\\btox\\b|\\bnox\\b|\\bjest\\b|vitest|mocha|karma|jasmine|playwright|cypress|rspec|phpunit|\\bpest\\b|ctest|(?:\\b|_)tests?|\\bspecs?\\b|--test\\b|\\b(?:make|ninja)\\s+(?:-\\S+\\s+){0,4}check\\b|\\b(?:npm|pnpm|yarn|bun)\\s+(?:run\\s+)?check\\b|\\bgh\\s+(?:pr\\s+checks|run\\s+(?:view|watch)))",
       "unless": "(?i)(koşmadım|koşturmadım|çalıştırmadım|ölçmedim|doğrulanmadı|doğrulamadım|koşulmadı|koşmadan)",
       "message": "Testlerin geçtiğini yazdın ama bu turda test komutu çalışmadı. Testi koş ve sonucu göster ya da koşulmadığını yaz. (You said tests pass, but no test command ran in this turn.)",
@@ -37,6 +37,24 @@
           },
           {
             "reply": "Testlerin hepsi geçiyor.",
+            "turn": []
+          },
+          {
+            "reply": "Testleri çalıştırdım, hepsi geçti.",
+            "turn": []
+          },
+          {
+            "reply": "Testleri koştum ve hepsi yeşil.",
+            "turn": [
+              "Edit: {\"file_path\": \"app.py\"}"
+            ]
+          },
+          {
+            "reply": "136 testten 121'i geçti.",
+            "turn": []
+          },
+          {
+            "reply": "Test sonuçları: hepsi geçti.",
             "turn": []
           }
         ],
@@ -80,6 +98,20 @@
           {
             "reply": "Tüm testler geçiyor mu, kontrol eder misin?",
             "turn": []
+          },
+          {
+            "reply": "Testleri çalıştırdım, hepsi geçti.",
+            "turn": [
+              "Bash: {\"command\": \"pytest -q\"}"
+            ]
+          },
+          {
+            "reply": "Testleri çalıştırdım, iki test düştü.",
+            "turn": []
+          },
+          {
+            "reply": "Testleri çalıştırdım, hepsi geçti mi bakar mısın?",
+            "turn": []
           }
         ]
       },
@@ -91,14 +123,109 @@
       ]
     },
     {
+      "id": "reply.tr.build-passes-needs-run",
+      "kind": "evidence",
+      "lang": "tr",
+      "event": "reply",
+      "action": "deny",
+      "needs_turn_field": [
+        "command",
+        "prompt"
+      ],
+      "pattern": "(?i)(?:\\b(?:build|derleme|derlenme|tip\\s+denetimi|tip\\s+kontrolü|tür\\s+denetimi|typecheck|type\\s+check|lint(?:er)?|tsc|mypy|eslint|ruff)(?:\\s+(?:de|da|işlemi|adımı|sonucu|çıktısı))?\\s*:?\\s+(?:(?:başarıyla|sorunsuz(?:ca)?|hatasız|temiz)\\s+)?(?:başarılı|geçti|geçiyor|temiz|yeşil|hatasız|sorunsuz|tamamlandı)|\\b(?:hatasız|sorunsuz|başarıyla|temiz)\\s+derlen(?:di|iyor)|\\b(?:lint|tip|tür|derleme|build|tsc|mypy|eslint|ruff)\\s+(?:hatası|hataları|uyarısı|uyarıları)\\s+(?:kalmadı|yok)|\\bbuild\\s+(?:aldı[mk]|alındı))(?!\\w)(?!\\s*m[iıuü]\\b)(?!\\s+ol(?:ursa|unca|duğunda|malı|sun)\\b)",
+      "needs_turn": "(?i)(?:^|[;&|\\n(]|\\$\\(|\\bxargs\\b)(?!\\s*(?:(?:sudo|time|nice|nohup|env|command|exec|builtin)\\s+(?:-\\S+\\s+){0,4}){0,3}(?:(?:npm|pnpm|yarn|bun)\\s+(?:i|install|ci|add|remove|uninstall|ls|list|view|info|outdated|update|upgrade)|python[\\d.]*\\s+-m\\s+pip|uv\\s+(?:pip|add|sync|lock)|nl|which|type|whereis|whence|hash|pip[\\d.]*|pipx|brew|apt|apt-get|cat|less|more|head|tail|ls|ll|la|tree|find|fd|grep|egrep|fgrep|rg|ag|ack|wc|echo|printf|sed|awk|file|stat|bat|view|vi|vim|nvim|nano|emacs|code|open|cd|pushd|popd|pwd|diff|cmp|touch|mkdir|cp|mv|rm|chmod|chown|ln|du|readlink|realpath|basename|dirname|test|\\[|git|sort|uniq|cut|tr|jq|xxd|od|strings|md5|md5sum|shasum|sha256sum|wget|curl)\\b)[^;&|\\n]*?(?:\\bbuild\\b|\\bcompile|\\bmake\\b|\\btsc\\b|mypy|pyright|\\blint|eslint|ruff|flake8|pylint|clippy|\\bcargo\\s+(?:build|check|clippy|test|run)|\\bgo\\s+(?:build|vet|test)|gradle|\\bmvn\\b|\\b(?:npm|pnpm|yarn|bun)\\s+(?:run\\s+)?(?:build|compile|lint|check|typecheck|type-check|tsc|test)|xcodebuild|swift\\s+build|dotnet\\s+build|cmake|ninja|\\bcheck\\b|\\bvalidate\\b)",
+      "unless": "(?i)(koşmadım|koşturmadım|çalıştırmadım|ölçmedim|doğrulanmadı|doğrulamadım|koşulmadı|koşmadan|derlemedim|derlenmedi|build\\s+almadım)",
+      "message": "Derlemenin, tip denetiminin ya da lint'in geçtiğini yazdın ama bu turda hiçbiri çalışmadı. Çalıştır ve sonucu göster ya da çalıştırılmadığını yaz. (You said the build, type check or lint passes, but none of them ran in this turn.)",
+      "needs_turn_tools": [
+        "Bash",
+        "PowerShell",
+        "Agent",
+        "Task"
+      ],
+      "examples": {
+        "hit": [
+          {
+            "reply": "Build başarılı, lint temiz.",
+            "turn": []
+          },
+          {
+            "reply": "Derleme başarıyla tamamlandı.",
+            "turn": []
+          },
+          {
+            "reply": "Tip denetimi geçti, PR hazır.",
+            "turn": []
+          },
+          {
+            "reply": "Kod artık hatasız derleniyor.",
+            "turn": []
+          },
+          {
+            "reply": "Lint hatası kalmadı.",
+            "turn": []
+          },
+          {
+            "reply": "Build: başarılı.",
+            "turn": []
+          },
+          {
+            "reply": "Build başarılı.",
+            "turn": [
+              "Edit: {\"file_path\": \"src/app.ts\"}"
+            ]
+          },
+          {
+            "reply": "Build başarılı.",
+            "turn": [
+              "Bash: {\"command\": \"ls build/\"}"
+            ]
+          }
+        ],
+        "miss": [
+          {
+            "reply": "Build başarılı mı?",
+            "turn": []
+          },
+          {
+            "reply": "Build başarılı olursa yayına alırım.",
+            "turn": []
+          },
+          {
+            "reply": "Lint kuralı temiz kod ister.",
+            "turn": []
+          },
+          {
+            "reply": "Build başarılı, lint temiz.",
+            "turn": [
+              "Bash: {\"command\": \"npm run build && npm run lint\"}"
+            ]
+          },
+          {
+            "reply": "Lint temiz.",
+            "turn": [
+              "Bash: {\"command\": \"ruff check .\"}"
+            ]
+          },
+          {
+            "reply": "Derlemeyi bu turda koşmadım, build başarılı diyemem.",
+            "turn": []
+          },
+          {
+            "reply": "Build adımını yazalım.",
+            "turn": []
+          }
+        ]
+      }
+    },
+    {
       "id": "reply.tr.done-needs-action",
       "kind": "evidence",
       "lang": "tr",
       "event": "reply",
       "action": "deny",
-      "pattern": "(?i)\\b(yayınladı[mk]|yayına\\s+aldı[mk]|canlıya\\s+aldı[mk]|düzeltti[mk]|onardı[mk]|yükledi[mk]|gönderdi[mk]|birleştirdi[mk]|deploy\\s+etti[mk]|push\\s+etti[mk]|commit\\s+etti[mk]|commitledi[mk]|push['’]?ladı[mk]|merge\\s+etti[mk]|merge['’]?ledi[mk]|(?:paket\\w*|bağımlılık\\w*|kütüphane\\w*|eklenti\\w*|modül\\w*|sürüm\\w*|araç\\w*|aracı|sunucu\\w*|ortam\\w*|kanca\\w*)(?:\\s+ile)?\\s+kurdu[mk]|kurulumu\\s+(?:yaptı[mk]|tamamladı[mk])|yayınlandı|yayına\\s+alındı|canlıya\\s+alındı|düzeltildi|gönderildi)\\b(?!\\s*m[iıuü]\\b)",
+      "pattern": "(?i)\\b(yayınladı[mk]|yayına\\s+aldı[mk]|canlıya\\s+aldı[mk]|düzeltti[mk]|onardı[mk]|yükledi[mk]|gönderdi[mk]|birleştirdi[mk]|deploy\\s+etti[mk]|push\\s+etti[mk]|commit\\s+etti[mk]|commitledi[mk]|push['’]?ladı[mk]|merge\\s+etti[mk]|merge['’]?ledi[mk]|(?:paket\\w*|bağımlılık\\w*|kütüphane\\w*|eklenti\\w*|modül\\w*|sürüm\\w*|araç\\w*|aracı|sunucu\\w*|ortam\\w*|kanca\\w*)(?:\\s+ile)?\\s+kurdu[mk]|kurulumu\\s+(?:yaptı[mk]|tamamladı[mk])|yayınlandı|yayına\\s+alındı|canlıya\\s+alındı|düzeltildi|gönderildi|kaydetti[mk]|(?<!gibi\\s)(?<!şöyle\\s)güncelledi[mk](?![^.!?\\n]*?(?:aşağıda|yukarıda|şöyle|:))|(?<!gibi\\s)(?<!şöyle\\s)güncellendi(?![^.!?\\n]*?(?:aşağıda|yukarıda|şöyle|:)))\\b(?!\\s*m[iıuü]\\b)",
       "needs_turn": ".",
-      "unless": "(?i)\\b(önceki\\s+turda|daha\\s+önce|dün|geçen\\s+(?:tur(?:da)?|hafta|ay|yıl|sefer)|geçenlerde|evvelsi\\s+gün|\\d+\\s+(?:gün|hafta|ay|yıl)\\s+önce)\\b",
+      "unless": "(?i)\\b(önceki\\s+turda|daha\\s+önce|dün|geçen\\s+(?:tur(?:da)?|hafta|ay|yıl|sefer)|geçenlerde|evvelsi\\s+gün|\\d+\\s+(?:gün|hafta|ay|yıl)\\s+önce|sürümünde|v?\\d+(?:\\.\\d+)+['’]?(?:de|da|te|ta))\\b",
       "message": "Bitmiş iş bildirdin ama bu turda hiçbir araç çalışmadı. İşi yap ve çıktısını göster ya da neyin beklediğini yaz. (You claimed finished work, but no tool ran in this turn.)",
       "examples": {
         "hit": [
@@ -132,6 +259,18 @@
           },
           {
             "reply": "Teklifi müşteriye gönderdim.",
+            "turn": []
+          },
+          {
+            "reply": "Panelde kaydettim, açıklama güncellendi.",
+            "turn": []
+          },
+          {
+            "reply": "Ayarları güncelledim.",
+            "turn": []
+          },
+          {
+            "reply": "Dosyayı kaydettik.",
             "turn": []
           }
         ],
@@ -173,6 +312,36 @@
           {
             "reply": "Bunu daha önce düzelttim.",
             "turn": []
+          },
+          {
+            "reply": "Metni güncelledim:",
+            "turn": []
+          },
+          {
+            "reply": "Tabloyu aşağıdaki gibi güncelledim.",
+            "turn": []
+          },
+          {
+            "reply": "Listeyi güncelledim, yeni hâli aşağıda.",
+            "turn": []
+          },
+          {
+            "reply": "Değişiklikleri kaydettik mi?",
+            "turn": []
+          },
+          {
+            "reply": "Bu çeyrekte yüzde 5 artış kaydedildi.",
+            "turn": []
+          },
+          {
+            "reply": "Bu hata 0.2.5 sürümünde düzeltildi.",
+            "turn": []
+          },
+          {
+            "reply": "Ayarları güncelledim.",
+            "turn": [
+              "Edit: {\"file_path\": \"config.toml\"}"
+            ]
           }
         ]
       }

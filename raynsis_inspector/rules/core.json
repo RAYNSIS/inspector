@@ -1836,6 +1836,229 @@
       }
     },
     {
+      "id": "tool.agent-instructions",
+      "kind": "safety",
+      "event": "tool",
+      "action": "ask",
+      "tools": [
+        "Edit",
+        "Write",
+        "MultiEdit"
+      ],
+      "field": [
+        "file_path"
+      ],
+      "pattern": "(?i)(?:^|[\\\\/])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-])",
+      "message": "This edits the agent's instructions (CLAUDE.md, CLAUDE.local.md or AGENTS.md). Approve it only if you asked for this change; an agent does not rewrite its own instructions on its own.",
+      "examples": {
+        "hit": [
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "/repo/CLAUDE.md",
+              "old_string": "a",
+              "new_string": "b"
+            }
+          },
+          {
+            "tool": "Write",
+            "input": {
+              "file_path": "/home/u/.claude/CLAUDE.md",
+              "content": "x"
+            }
+          },
+          {
+            "tool": "Write",
+            "input": {
+              "file_path": "/repo/CLAUDE.local.md",
+              "content": "x"
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "C:\\Users\\u\\proj\\AGENTS.md",
+              "old_string": "a",
+              "new_string": "b"
+            }
+          },
+          {
+            "tool": "MultiEdit",
+            "input": {
+              "file_path": "/repo/sub/claude.md",
+              "edits": []
+            }
+          }
+        ],
+        "miss": [
+          {
+            "tool": "Read",
+            "input": {
+              "file_path": "/repo/CLAUDE.md"
+            }
+          },
+          {
+            "tool": "Write",
+            "input": {
+              "file_path": "/repo/CLAUDE.md.bak-2026-11-19",
+              "content": "x"
+            }
+          },
+          {
+            "tool": "Write",
+            "input": {
+              "file_path": "/repo/docs/claude-notes.md",
+              "content": "x"
+            }
+          },
+          {
+            "tool": "Edit",
+            "input": {
+              "file_path": "/repo/MYCLAUDE.md",
+              "old_string": "a",
+              "new_string": "b"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool.agent-instructions-shell",
+      "kind": "safety",
+      "event": "tool",
+      "action": "ask",
+      "tools": [
+        "Bash",
+        "PowerShell",
+        "Monitor"
+      ],
+      "field": "command",
+      "pattern": "(?i)(?:>>?\\|?\\s*[\\\"']?[^\\s;&|\\\"'<>()]*(?<![\\w.-])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-]))|(?:\\btee\\b(?:(?!\\btee\\b)[^;&|\\n])*?\\s[\\\"']?[^\\s;&|\\\"']*(?<![\\w.-])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-]))|(?:(?:(?:^|[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:sed\\s+(?:-[^\\s;&|]*\\s+)*?(?:-[a-zA-Z]*i|--in-place)|perl\\s+-[a-zA-Z]*i|truncate|chmod|chown|chflags|rm|rmdir|unlink|shred|trash|mv)\\b(?:(?!(?:(?:[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:sed\\s+(?:-[^\\s;&|]*\\s+)*?(?:-[a-zA-Z]*i|--in-place)|perl\\s+-[a-zA-Z]*i|truncate|chmod|chown|chflags|rm|rmdir|unlink|shred|trash|mv)\\b)[^;&|\\n])*?(?:(?<![\\w.-])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-])))|(?:(?:(?:^|[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:cp|ln|install|rsync)\\b(?:(?!(?:(?:[;&|({`\\n]|\\$\\()\\s*(?:(?:then|do|else|!)\\s+)?|\\b(?:sudo|xargs|env|exec|command|nohup|time|then|do|else)\\s+)(?:cp|ln|install|rsync)\\b)[^;&|\\n])*?\\s[\\\"']?[^\\s;&|\\\"']*(?<![\\w.-])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-])[^\\s;&|\\\"']*[\\\"']?\\s*(?:$|[;&|\\n]))|(?:\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm(?!(?:(?!\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm|mv|clean)\\b)[^;&|\\n])*?\\s--cached\\b)|mv|clean)\\b(?:(?!\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+){0,4}(?:checkout|restore|rm|mv|clean)\\b)[^;&|\\n])*?(?:(?<![\\w.-])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-])))|(?:\\bfind\\b(?=(?:(?!\\bfind\\b)[^;&|\\n])*?\\s-(?:delete|exec\\s+rm)\\b)(?:(?!\\bfind\\b)[^;&|\\n])*?(?:(?<![\\w.-])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-])))|(?:\\bdd\\b(?:(?!\\bdd\\b)[^;&|\\n])*?\\bof=[\\\"']?[^\\s;&|\\\"']*(?<![\\w.-])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-]))|(?:\\b(?:curl|wget)\\b(?:(?!\\b(?:curl|wget)\\b)[^;&|\\n])*?\\s(?:-[a-zA-Z]*o|--output(?:-document)?)[\\s=]?[\\\"']?[^\\s;&|\\\"']*(?<![\\w.-])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-]))",
+      "message": "This shell command writes to the agent's instructions (CLAUDE.md, CLAUDE.local.md or AGENTS.md). Approve it only if you asked for this change; an agent does not rewrite its own instructions on its own.",
+      "examples": {
+        "hit": [
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "echo '- use pnpm' >> CLAUDE.md"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "sed -i 's/npm/pnpm/' AGENTS.md"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "tee -a ~/.claude/CLAUDE.md < notes.txt"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "cp /tmp/x.md ./CLAUDE.md"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "git checkout -- CLAUDE.md"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "rm CLAUDE.local.md"
+            }
+          }
+        ],
+        "miss": [
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "cat CLAUDE.md"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "grep -n pnpm CLAUDE.md AGENTS.md"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "cp CLAUDE.md CLAUDE.md.bak-2026-11-19"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "cp CLAUDE.md /tmp/notes.md"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "git diff CLAUDE.md"
+            }
+          },
+          {
+            "tool": "Bash",
+            "input": {
+              "command": "wc -c CLAUDE.md"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tool.agent-instructions-mcp",
+      "kind": "safety",
+      "event": "tool",
+      "action": "ask",
+      "tool_pattern": "(?i)^mcp__.*(write|edit|create|move|rename|delete|remove|append|patch|put|upload|save)",
+      "field": [
+        "path",
+        "file_path",
+        "filePath",
+        "destination",
+        "target",
+        "source",
+        "paths"
+      ],
+      "pattern": "(?i)(?:^|[\\\\/])(?:CLAUDE(?:\\.local)?|AGENTS)\\.md(?![\\w.-])",
+      "message": "This MCP file tool edits the agent's instructions (CLAUDE.md, CLAUDE.local.md or AGENTS.md). Approve it only if you asked for this change; an agent does not rewrite its own instructions on its own.",
+      "examples": {
+        "hit": [
+          {
+            "tool": "mcp__filesystem__write_file",
+            "input": {
+              "path": "/repo/CLAUDE.md",
+              "content": "x"
+            }
+          }
+        ],
+        "miss": [
+          {
+            "tool": "mcp__filesystem__read_file",
+            "input": {
+              "path": "/repo/CLAUDE.md"
+            }
+          },
+          {
+            "tool": "mcp__filesystem__write_file",
+            "input": {
+              "path": "/repo/docs/claude.md.txt",
+              "content": "x"
+            }
+          }
+        ]
+      }
+    },
+    {
       "id": "tool.no-test-skip",
       "kind": "evidence",
       "event": "tool",
@@ -2323,7 +2546,7 @@
       "event": "reply",
       "action": "deny",
       "needs_turn_field": ["command", "prompt"],
-      "pattern": "(?i)\\b(?:all\\s+)?(?:the\\s+)?(?:unit\\s+|integration\\s+|e2e\\s+|end-to-end\\s+|CI\\s+)?(?:tests?|test\\s+suite|suite|specs?|checks)\\s+(?:now\\s+|all\\s+)?(?:pass(?:es|ed)?\\b|passing\\b(?!\\s+(?:is|was|would|will|should|must|means|requires)\\b)|(?:is|are|has\\s+been|have\\s+been)\\s+(?:all\\s+|now\\s+)?(?:passing|green)\\b|succeed(?:s|ed)?\\b)|\\b(?:tests?|test\\s+suite|test\\s+results?|specs?)\\s*:\\s*(?:all\\s+)?(?:green|passing|passed|pass|ok|successful)\\b|\\b\\d+\\s+passed(?=,\\s*\\d+\\s+(?:failed|skipped|warnings?|errors?|xfailed|deselected)\\b|\\s+in\\s+\\d)|\\b(?:pytest|jest|vitest|mocha|rspec|cargo\\s+test|go\\s+test)\\s+(?:is\\s+|now\\s+)*(?:green|passes|passed|passing)\\b",
+      "pattern": "(?i)\\b(?:all\\s+)?(?:the\\s+)?(?:unit\\s+|integration\\s+|e2e\\s+|end-to-end\\s+|CI\\s+)?(?:tests?|test\\s+suite|suite|specs?|checks)\\s+(?:now\\s+|all\\s+)?(?:pass(?:es|ed)?\\b|passing\\b(?!\\s+(?:is|was|would|will|should|must|means|requires)\\b)|(?:is|are|has\\s+been|have\\s+been)\\s+(?:all\\s+|now\\s+)?(?:passing|green)\\b|succeed(?:s|ed)?\\b)|\\b(?:tests?|test\\s+suite|test\\s+results?|specs?)\\s*:\\s*(?:all\\s+)?(?:green|passing|passed|pass|ok|successful)\\b|\\b\\d+\\s+passed(?=,\\s*\\d+\\s+(?:failed|skipped|warnings?|errors?|xfailed|deselected)\\b|\\s+in\\s+\\d)|\\b(?:pytest|jest|vitest|mocha|rspec|cargo\\s+test|go\\s+test)\\s+(?:is\\s+|now\\s+)*(?:green|passes|passed|passing)\\b|\\b(?:I|we)\\s+(?:re-?)?ran\\s+(?:the\\s+|all\\s+the\\s+)?(?:unit\\s+|integration\\s+|e2e\\s+)?(?:tests?|test\\s+suite|suite|specs?)\\b[^.!?\\n]{0,30}?(?:\\band|,)\\s+(?:they|it|everything)\\s+(?:all\\s+)?(?:pass(?:es|ed)?|(?:is|are|was|were)\\s+(?:all\\s+)?(?:green|passing))\\b",
       "needs_turn": "(?i)(?:^|[;&|\\n(]|\\$\\(|\\bxargs\\b)(?!\\s*(?:(?:sudo|time|nice|nohup|env|command|exec|builtin)\\s+(?:-\\S+\\s+){0,4}){0,3}(?:(?:npm|pnpm|yarn|bun)\\s+(?:i|install|ci|add|remove|uninstall|ls|list|view|info|outdated|update|upgrade)|python[\\d.]*\\s+-m\\s+pip|uv\\s+(?:pip|add|sync|lock)|nl|which|type|whereis|whence|hash|pip[\\d.]*|pipx|brew|apt|apt-get|cat|less|more|head|tail|ls|ll|la|tree|find|fd|grep|egrep|fgrep|rg|ag|ack|wc|echo|printf|sed|awk|file|stat|bat|view|vi|vim|nvim|nano|emacs|code|open|cd|pushd|popd|pwd|diff|cmp|touch|mkdir|cp|mv|rm|chmod|chown|ln|du|readlink|realpath|basename|dirname|test|\\[|git|sort|uniq|cut|tr|jq|xxd|od|strings|md5|md5sum|shasum|sha256sum|wget|curl)\\b)[^;&|\\n]*?(?:pytest|py\\.test|unittest|nosetests|\\btox\\b|\\bnox\\b|\\bjest\\b|vitest|mocha|karma|jasmine|playwright|cypress|rspec|phpunit|\\bpest\\b|ctest|(?:\\b|_)tests?|\\bspecs?\\b|--test\\b|\\b(?:make|ninja)\\s+(?:-\\S+\\s+){0,4}check\\b|\\b(?:npm|pnpm|yarn|bun)\\s+(?:run\\s+)?check\\b|\\bgh\\s+(?:pr\\s+checks|run\\s+(?:view|watch)))",
       "unless": "(?i)(n[o'’]?t\\s+(?:yet\\s+)?(?:been\\s+)?(?:re-?)?run|did\\s*n[o'’]t\\s+run|have\\s*n[o'’]t\\s+(?:been\\s+)?run|has\\s*n[o'’]t\\s+(?:been\\s+)?run|unverified|not\\s+verified|(?:have|has)\\s*n[o'’]?t\\s+(?:checked|verified|confirmed|tested)|can(?:not|['’]t)\\s+(?:verify|confirm|check)|according\\s+to)",
       "message": "You said tests pass, but no test command ran in this turn. Run them and show the result, or say they were not run.",
@@ -2472,6 +2695,14 @@
           },
           {
             "reply": "Lint is not verified yet. All tests pass.",
+            "turn": []
+          },
+          {
+            "reply": "I ran the tests and they all pass.",
+            "turn": []
+          },
+          {
+            "reply": "We ran the suite, everything passed.",
             "turn": []
           }
         ],
@@ -2629,6 +2860,16 @@
             "turn": [
               "Agent: {\"prompt\": \"run the test suite and report\"}"
             ]
+          },
+          {
+            "reply": "I ran the tests and they all pass.",
+            "turn": [
+              "Bash: {\"command\": \"pytest -q\"}"
+            ]
+          },
+          {
+            "reply": "I ran the tests and two of them fail.",
+            "turn": []
           }
         ]
       },

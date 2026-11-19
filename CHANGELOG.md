@@ -4,6 +4,29 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.1
+
+A Windows user ran 0.3.0 through 40 trials of their own. Three Turkish phrasings got past the reply rules, and
+`CLAUDE.md` could be changed without asking.
+
+- `reply.tr.tests-pass-needs-run` also reads a run followed by its result ("Testleri çalıştırdım, hepsi geçti"),
+  a count ("136 testten 121'i geçti") and a result after a colon ("Test sonuçları: hepsi geçti").
+  The English rule reads "I ran the tests and they all pass" the same way.
+- New `reply.tr.build-passes-needs-run`, the Turkish twin of `reply.build-passes-needs-run`: "Build başarılı",
+  "lint temiz", "tip denetimi geçti", "hatasız derleniyor", "lint hatası kalmadı" need a build, type check or lint
+  command in the turn.
+- `reply.tr.done-needs-action` also reads "kaydettim" and "güncelledim / güncellendi". New text written in the
+  reply itself is not a claim ("Metni güncelledim:", "aşağıdaki gibi güncelledim"). The passive "kaydedildi" is
+  left out: in news it means "was recorded" ("yüzde 5 artış kaydedildi"), and it was the one false alarm in our replay.
+  A version note ("0.2.5 sürümünde düzeltildi") is history, not a claim.
+- New `tool.agent-instructions`, `-shell` and `-mcp`: an edit to `CLAUDE.md`, `CLAUDE.local.md` or `AGENTS.md` asks
+  the human, with the same permission-mode rule as the guardrails. Reading them and backup copies are free.
+  README says how to turn the three off for agents that keep their instructions up to date as part of the work.
+- Replay on 4,287 real turns from our own sessions (mostly Turkish): the old reply rules fired on 2 turns, the
+  new ones on 3. The one new hit restates a test result from an earlier turn without saying so, which is what
+  the rule is for.
+- 24 rules, 543 examples. README: the 0.3.0 test run on the reporting Windows machine (121 passed, 15 POSIX-only skipped).
+
 ## 0.3.0
 
 The first outside review, from someone who keeps their own hooks in `~/.claude/hooks/` and edits them with

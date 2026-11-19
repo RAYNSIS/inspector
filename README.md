@@ -41,7 +41,7 @@ Nothing else is installed. On Windows the hooks run through Git Bash, which come
 **Pin a version.** Add `#` and a release tag to the source, and you run that release and nothing newer:
 
 ```
-/plugin install raynsis-inspector --marketplace RAYNSIS/inspector#v0.3.0
+/plugin install raynsis-inspector --marketplace RAYNSIS/inspector#v0.3.1
 ```
 
 Claude Code does not auto-update plugins from a third-party marketplace such as this one unless you turn
@@ -109,7 +109,7 @@ DENY reply.tests-pass-needs-run
      matched: "All tests pass"
 
 $ raynsis-inspector check reply 'Fixed the parser. All tests pass.' --turn 'Edit: {"file_path": "parser.py"}' --turn 'Bash: {"command": "pytest -q"}'
-pass: no rule fired (20 rules checked)
+pass: no rule fired (24 rules checked)
 ```
 
 `raynsis-inspector check` exits 1 when a deny rule fires, so it also works in scripts.
@@ -129,6 +129,9 @@ pass: no rule fired (20 rules checked)
 | `tool.guardrails-read-only` | tool | ask | This edits a guardrail: hook settings, hook scripts, installed plugins or RAYNSIS Inspector's rules and logs. |
 | `tool.guardrails-read-only-shell` | tool | ask | This shell command writes to guardrail files: hook settings, hook scripts, installed plugins or .raynsis-inspector/. |
 | `tool.guardrails-read-only-mcp` | tool | ask | This MCP file tool edits a guardrail file: hook settings, hook scripts, installed plugins or .raynsis-inspector/. |
+| `tool.agent-instructions` | tool | ask | This edits the agent's instructions (CLAUDE.md, CLAUDE.local.md or AGENTS.md). |
+| `tool.agent-instructions-shell` | tool | ask | This shell command writes to the agent's instructions (CLAUDE.md, CLAUDE.local.md or AGENTS.md). |
+| `tool.agent-instructions-mcp` | tool | ask | This MCP file tool edits the agent's instructions (CLAUDE.md, CLAUDE.local.md or AGENTS.md). |
 | `tool.no-test-skip` | tool | warn | This edit marks an existing test as skipped or expected to fail. |
 | `tool.no-test-file-delete` | tool | warn | This deletes or empties test files, or moves them where the test runner will not find them. |
 | `tool.no-test-function-delete` | tool | warn | This edit removes an existing test. |
@@ -137,6 +140,7 @@ pass: no rule fired (20 rules checked)
 | `reply.done-needs-action` | reply | deny | You claimed finished work, but no tool ran in this turn. |
 | `reply.unopened-link` | reply | deny | This link never appeared in anything you opened or were given this session. |
 | `reply.tr.tests-pass-needs-run` | reply | deny | Testlerin geçtiğini yazdın ama bu turda test komutu çalışmadı. |
+| `reply.tr.build-passes-needs-run` | reply | deny | Derlemenin, tip denetiminin ya da lint'in geçtiğini yazdın ama bu turda hiçbiri çalışmadı. |
 | `reply.tr.done-needs-action` | reply | deny | Bitmiş iş bildirdin ama bu turda hiçbir araç çalışmadı. |
 
 The full patterns and their examples are in [`raynsis_inspector/rules/core.json`](raynsis_inspector/rules/core.json) and
@@ -157,6 +161,10 @@ The full patterns and their examples are in [`raynsis_inspector/rules/core.json`
   `ask` did stop a Write to an ordinary path), so in that mode, in `dontAsk` and in any mode the hook does not
   recognise, these rules deny as before and say how to approve the change. When one call matches both a `deny`
   and an `ask` rule, `deny` wins.
+- **The agent's instructions ask too.** `CLAUDE.md`, `CLAUDE.local.md` and `AGENTS.md` tell the agent how to
+  work, so an edit to them (Edit, Write, a shell write or an MCP file tool) goes to you as the same
+  permission prompt, with the same mode rule. Reading them, and copying one to a backup such as
+  `CLAUDE.md.bak-2026-11-19`, is not asked about.
 - **Reply rules** match a claim in the final reply, then look for evidence among the tool calls made
   in this turn (since the last human message). "Tests pass" needs a test command run through a shell
   or a subagent; "the build passes" needs a build, type check or lint command; "I've deployed" needs at
@@ -286,6 +294,10 @@ Two other choices, both set by you outside the session:
 - **No guardrail rules at all.** `RAYNSIS_INSPECTOR_DISABLE=tool.guardrails-read-only,tool.guardrails-read-only-shell,tool.guardrails-read-only-mcp`.
   The other rules keep working.
 
+If your agent keeps `CLAUDE.md` or `AGENTS.md` up to date as part of its work and you do not want a prompt
+each time, turn those three rules off the same way:
+`RAYNSIS_INSPECTOR_DISABLE=tool.agent-instructions,tool.agent-instructions-shell,tool.agent-instructions-mcp`.
+
 `failure.json` (the warning throttle) lives in the project, so nothing in it is trusted: a file shipped with
 a cloned repository can add a warning, never silence one.
 
@@ -359,8 +371,7 @@ Two lessons shaped the code:
 ## Known gaps
 
 - Rules are regexes, not understanding. The reply rules know common English and Turkish phrasings, not
-  all of them ("Everything passes now", "I ran the tests and they all pass" and "No type errors." are
-  not recognised). Quoted speech after a colon ("You wrote: All tests pass") and a sentence that defines
+  all of them ("Everything passes now" and "No type errors." are not recognised). Quoted speech after a colon ("You wrote: All tests pass") and a sentence that defines
   a result ("A green badge means all tests pass") are read as claims.
 - Tool rules read the command text. A command that only mentions a dangerous string can trip them
   (a heredoc of notes that says "never run rm -rf ~"), and a determined agent can hide one (`eval`,
@@ -382,7 +393,8 @@ Two lessons shaped the code:
   skips the Microsoft Store `python3` shortcut and uses `python` or `py -3`; the first live Windows report
   (0.2.4, a python.org install) was that shortcut. The fix is tested in CI under Git Bash on Python 3.9 to 3.14
   and was confirmed on that machine with 0.2.5: `python3` is only the shortcut there, the hook ran through
-  `python` and wrote its audit row, and no hook error appeared. Without Git for Windows, Claude Code runs hooks in PowerShell,
+  `python` and wrote its audit row, and no hook error appeared. On the same machine, 0.3.0 passed 121 of
+  its 136 tests; the other 15 test POSIX-only behaviour and were skipped. Without Git for Windows, Claude Code runs hooks in PowerShell,
   which cannot run the launcher, and a failed `PreToolUse` hook then blocks the call: install Git for Windows first.
 
 ## Contributing

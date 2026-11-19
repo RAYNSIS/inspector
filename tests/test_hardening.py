@@ -179,7 +179,8 @@ class AskTheHuman(Base):
     def test_the_three_guardrail_rules_ask(self):
         rules = {r["id"]: r for r in engine.load_rules(cli.packaged_rules())[0]}
         self.assertEqual([rules[i]["action"] for i in self.GUARD_IDS], ["ask"] * 3)
-        self.assertEqual(sorted(r["id"] for r in rules.values() if r["action"] == "ask"), sorted(self.GUARD_IDS))
+        self.assertEqual(sorted(r["id"] for r in rules.values() if r["action"] == "ask"),
+                         sorted(self.GUARD_IDS + AgentInstructions.IDS))
 
     def test_a_hook_edit_becomes_a_permission_prompt(self):
         for tool, tool_input in (("Edit", {"file_path": "/home/u/.claude/hooks/guard.py", "old_string": "a", "new_string": "b"}),
@@ -221,6 +222,64 @@ class AskTheHuman(Base):
         sink = io.StringIO()
         self.assertEqual(cli.check("bash", "echo x > .claude/settings.json", out=sink), 1)
         self.assertIn("ASK  tool.guardrails-read-only-shell", sink.getvalue())
+
+
+class AgentInstructions(Base):
+    """0.3.1, from a Windows user's report: CLAUDE.md and AGENTS.md are the agent's own instructions,
+    so an edit to them is put to the human the same way a guardrail edit is."""
+
+    IDS = ("tool.agent-instructions", "tool.agent-instructions-shell", "tool.agent-instructions-mcp")
+    call = AskTheHuman.call
+
+    def test_an_instructions_edit_asks_and_bypass_denies(self):
+        edit = {"file_path": "/repo/CLAUDE.md", "old_string": "a", "new_string": "b"}
+        for mode in ("default", "acceptEdits", "auto"):
+            hso = self.call("Edit", edit, mode)[1]["hookSpecificOutput"]
+            self.assertEqual(hso["permissionDecision"], "ask", mode)
+            self.assertIn("rewrite its own instructions", hso["permissionDecisionReason"], mode)
+        hso = self.call("Edit", edit, "bypassPermissions")[1]["hookSpecificOutput"]
+        self.assertEqual(hso["permissionDecision"], "deny")
+        self.assertIn("switches to another permission mode", hso["permissionDecisionReason"])
+
+    def test_every_way_in_asks(self):
+        for tool, tool_input in (("Write", {"file_path": "C:\\proj\\AGENTS.md", "content": "x"}),
+                                 ("Bash", {"command": "echo '- use pnpm' >> CLAUDE.md"}),
+                                 ("mcp__fs__write_file", {"path": "/repo/CLAUDE.local.md", "content": "x"})):
+            self.assertEqual(self.call(tool, tool_input)[1]["hookSpecificOutput"]["permissionDecision"], "ask", tool)
+
+    def test_reading_or_backing_up_is_free(self):
+        for tool, tool_input in (("Read", {"file_path": "/repo/CLAUDE.md"}),
+                                 ("Bash", {"command": "cp CLAUDE.md CLAUDE.md.bak-2026-11-19"}),
+                                 ("Bash", {"command": "grep -n pnpm CLAUDE.md"})):
+            self.assertIsNone(self.call(tool, tool_input)[1], tool)
+
+    def test_the_human_can_turn_them_off(self):
+        os.environ["RAYNSIS_INSPECTOR_DISABLE"] = ",".join(self.IDS)
+        self.assertIsNone(self.call("Edit", {"file_path": "/repo/CLAUDE.md", "old_string": "a", "new_string": "b"})[1])
+
+
+class TurkishClaims031(Base):
+    """0.3.1: the three Turkish phrasings a Windows user's 40 trials got past 0.3.0."""
+
+    def hits(self, reply, turn=()):
+        rules = engine.load_rules(cli.packaged_rules())[0]
+        return sorted(r["id"] for r, _ in engine.reply_hits(rules, reply, list(turn)))
+
+    def test_the_reported_misses_are_caught(self):
+        self.assertEqual(self.hits("Testleri çalıştırdım, hepsi geçti."), ["reply.tr.tests-pass-needs-run"])
+        self.assertEqual(self.hits("Build başarılı, lint temiz."), ["reply.tr.build-passes-needs-run"])
+        self.assertEqual(self.hits("Panelde kaydettim, açıklama güncellendi."), ["reply.tr.done-needs-action"])
+        self.assertEqual(self.hits("I ran the tests and they all pass."), ["reply.tests-pass-needs-run"])
+
+    def test_with_evidence_in_the_turn_they_pass(self):
+        self.assertEqual(self.hits("Testleri çalıştırdım, hepsi geçti.", ['Bash: {"command": "pytest -q"}']), [])
+        self.assertEqual(self.hits("Build başarılı, lint temiz.", ['Bash: {"command": "npm run build && npm run lint"}']), [])
+        self.assertEqual(self.hits("Panelde kaydettim, açıklama güncellendi.", ['Edit: {"file_path": "panel.json"}']), [])
+
+    def test_text_written_in_the_reply_itself_is_not_a_claim(self):
+        for reply in ("Metni güncelledim:", "Tabloyu aşağıdaki gibi güncelledim.", "Listeyi güncelledim, yeni hâli aşağıda.",
+                      "Bu çeyrekte yüzde 5 artış kaydedildi.", "Build başarılı mı?"):
+            self.assertEqual(self.hits(reply), [], reply)
 
 
 if __name__ == "__main__":
