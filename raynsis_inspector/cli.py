@@ -343,17 +343,33 @@ def test_rules(paths=None) -> int:
     return 1 if failures else 0
 
 
-def stats(window: int = 600, out=None) -> dict:
-    """Per rule: times checked, raw hits, unique hits (same session + rule within `window` s = one)."""
+def stats(window: int = 600, out=None, exclude=(), since: float = 0.0) -> dict:
+    """Per rule: times checked, raw hits, unique hits (same session + rule within `window` s = one).
+
+    `exclude`: session id prefixes left out of both the checks and the hits. Sessions that test the rules
+    fire them on purpose and would lead the table. `since`: only the last N days; a row without a time
+    cannot be placed and is left out."""
+    exclude = tuple(e for e in exclude if e)
+    cutoff = time.time() - since * 86400 if since and since > 0 else None
+    dropped = {"evals": 0, "hits": 0}
+
+    def keep(row: dict, kind: str) -> bool:
+        t = row.get("t")
+        if (exclude and str(row.get("session") or "").startswith(exclude)) or (
+                cutoff is not None and not (type(t) in (int, float) and t >= cutoff)):
+            dropped[kind] += 1
+            return False
+        return True
+
     table = {}
-    evals = audit.read_jsonl("evals.jsonl")
+    evals = [r for r in audit.read_jsonl("evals.jsonl") if keep(r, "evals")]
     for row in evals:
         for rid in row.get("evaluated") or []:
             table.setdefault(rid, {"checked": 0, "raw": 0, "unique": 0})["checked"] += 1
     last = {}
     for row in sorted(audit.read_jsonl("audit.jsonl"), key=lambda x: x.get("t", 0)):
         rid = row.get("rule")
-        if not rid:
+        if not rid or not keep(row, "hits"):
             continue
         s = table.setdefault(rid, {"checked": 0, "raw": 0, "unique": 0})
         s["raw"] += 1
@@ -370,6 +386,8 @@ def stats(window: int = 600, out=None) -> dict:
     if replies:
         w.write("\nreply checks: %d · turn start not readable (evidence rules skipped): %d\n"
                 % (len(replies), sum(1 for r in replies if r.get("turn_unknown"))))
+    if exclude or cutoff is not None:
+        w.write("\nfiltered out: %d evaluations, %d hits\n" % (dropped["evals"], dropped["hits"]))
     return table
 
 
@@ -429,6 +447,9 @@ def main(argv=None) -> int:
     t.add_argument("paths", nargs="*")
     s = sub.add_parser("stats", help="per-rule checked / hit counts from the audit log")
     s.add_argument("--window", type=int, default=600, help="dedupe window in seconds (default 600)")
+    s.add_argument("--exclude-session", action="append", default=[], metavar="PREFIX",
+                   help="leave out sessions whose id starts with PREFIX, e.g. your own rule tests (repeatable)")
+    s.add_argument("--since", type=float, default=0.0, metavar="DAYS", help="only the last DAYS days")
     sub.add_parser("doctor", help="check install, rules and audit log")
     a = ap.parse_args(argv)
     if a.cmd == "hook":
@@ -448,7 +469,7 @@ def main(argv=None) -> int:
     if a.cmd == "test-rules":
         return test_rules(a.paths or None)
     if a.cmd == "stats":
-        stats(a.window)
+        stats(a.window, exclude=a.exclude_session, since=a.since)
         return 0
     if a.cmd == "doctor":
         return doctor()

@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from contextlib import redirect_stdout
 
@@ -268,6 +269,53 @@ class Stats(Base):
         table = cli.stats(window=600, out=io.StringIO())
         self.assertEqual(table["r"], {"checked": 10, "raw": 5, "unique": 3})
         del rule
+
+    def _seed(self, now):
+        """Two real sessions and one rule-testing session; one old row and one row without a time."""
+        for sess, n_eval, hit_times in (("real-1", 6, [now - 50]), ("real-2", 3, []), ("probe-9", 4, [now - 40, now - 30])):
+            for _ in range(n_eval):
+                audit._append("evals.jsonl", {"session": sess, "event": "tool", "evaluated": ["r"], "hits": [], "t": now - 60})
+            for t in hit_times:
+                audit._append("audit.jsonl", {"session": sess, "event": "tool", "rule": "r", "action": "deny", "t": t})
+        audit._append("evals.jsonl", {"session": "real-1", "event": "tool", "evaluated": ["r"], "hits": [], "t": now - 10 * 86400})
+        audit._append("audit.jsonl", {"session": "real-1", "event": "tool", "rule": "r", "action": "deny", "t": now - 10 * 86400})
+        with open(os.path.join(audit.home(), "evals.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps({"session": "real-2", "event": "tool", "evaluated": ["r"], "hits": []}) + "\n")
+
+    def test_unfiltered_output_is_unchanged(self):
+        self._seed(time.time())
+        buf = io.StringIO()
+        table = cli.stats(out=buf)
+        self.assertEqual(table["r"], {"checked": 15, "raw": 4, "unique": 3})
+        self.assertNotIn("filtered out", buf.getvalue())
+
+    def test_exclude_session_drops_checks_and_hits(self):
+        self._seed(time.time())
+        buf = io.StringIO()
+        table = cli.stats(out=buf, exclude=["probe"])
+        self.assertEqual(table["r"], {"checked": 11, "raw": 2, "unique": 2})
+        self.assertIn("filtered out: 4 evaluations, 2 hits", buf.getvalue())
+        self.assertEqual(cli.stats(out=io.StringIO(), exclude=["probe", "real-1"])["r"],
+                         {"checked": 4, "raw": 0, "unique": 0})
+        self.assertEqual(cli.stats(out=io.StringIO(), exclude=[""])["r"]["checked"], 15)  # an empty prefix excludes nothing
+
+    def test_since_keeps_recent_rows_only(self):
+        self._seed(time.time())
+        buf = io.StringIO()
+        table = cli.stats(out=buf, since=1)
+        # the 10 day old check and hit go, and so does the check that carries no time
+        self.assertEqual(table["r"], {"checked": 13, "raw": 3, "unique": 2})
+        self.assertIn("filtered out: 2 evaluations, 1 hits", buf.getvalue())
+        self.assertEqual(cli.stats(out=io.StringIO(), since=0.5, exclude=["probe"])["r"],
+                         {"checked": 9, "raw": 1, "unique": 1})
+
+    def test_stats_flags_on_the_command_line(self):
+        self._seed(time.time())
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = cli.main(["stats", "--exclude-session", "probe", "--since", "1"])
+        self.assertEqual(rc, 0)
+        self.assertIn("filtered out: 6 evaluations, 3 hits", buf.getvalue())
 
 
 if __name__ == "__main__":

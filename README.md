@@ -233,10 +233,16 @@ a cloned repository can add a warning, never silence one.
 .raynsis-inspector/audit.jsonl   one line per hit, engine error or invalid rule
 .raynsis-inspector/evals.jsonl   one line per evaluation: which rules were checked, which fired
 raynsis-inspector stats          checked / raw / unique hits per rule (--window 600)
+  --exclude-session PREFIX       leave out sessions whose id starts with PREFIX (repeatable)
+  --since DAYS                   only the last DAYS days
 raynsis-inspector doctor         install, rules and log health
 ```
 
 `.raynsis-inspector/` gets its own `.gitignore` for the logs; `rules.json` stays committable.
+
+The rule at the top of `stats` is where your agent cuts corners most. Sessions in which you try the
+rules out fire them on purpose and will lead the table: in our own log, 128 of 144 hit lines came from
+five sessions that were testing the rules. Leave those out with `--exclude-session` before you read it.
 
 **Shadow mode first.** Run `RAYNSIS_INSPECTOR_SHADOW=1` for a week next to your current setup, read `raynsis-inspector stats`,
 then turn enforcement on.

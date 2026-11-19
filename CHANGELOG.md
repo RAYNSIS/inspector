@@ -4,6 +4,16 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.3
+
+Suggested by a reader: count which rules fire most to see where the agent cuts corners. `stats` already
+did the counting; reading our own table showed what it lacked.
+
+- `raynsis-inspector stats` takes `--exclude-session PREFIX` (repeatable) and `--since DAYS`. Both filter
+  the checks and the hits together, so the rate stays honest. Sessions that test the rules fire them on
+  purpose: in our own log they were 128 of 144 hit lines and led the table. Output without the flags is
+  unchanged.
+
 ## 0.2.2
 
 Security pass: a source review of the engine and all 20 rules. Every item below was reproduced with a
