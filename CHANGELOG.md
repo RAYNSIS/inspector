@@ -4,6 +4,16 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.4
+
+- README: a "Try it in the first minute" step right under Install. Rules fire rarely in ordinary work
+  (in our own logs, 19 hits in 395 sessions over 30 days), so a new install looked like it did nothing.
+  The step is one prompt that makes a gate speak; a test keeps the documented command a deny.
+- The plugin icon: `.claude-plugin/icon.png`, a square 1024 px PNG. A test reads its size from the file.
+- README status line no longer names a single old version.
+
+No rule or engine change.
+
 ## 0.2.3
 
 Suggested by a reader: count which rules fire most to see where the agent cuts corners. `stats` already

@@ -311,6 +311,29 @@ class Packaging(unittest.TestCase):
             readme = f.read()
         self.assertTrue(buf.getvalue().strip() in readme, "README rule table is stale: run `raynsis-inspector rules --markdown`")
 
+    def test_readme_first_minute_step_is_a_deny(self):
+        # The README tells a new user to paste one prompt right after installing; its command must stay a deny.
+        with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as f:
+            readme = f.read()
+        self.assertIn("show me the output: cat .env", readme)
+        self.assertIn("[tool.no-secret-files]", readme)
+        rules = engine.load_rules(cli.packaged_rules())[0]
+        hits = engine.tool_hits(rules, "Bash", {"command": "cat .env"})
+        self.assertEqual([(rule["id"], rule["action"], matched) for rule, matched in hits],
+                         [("tool.no-secret-files", "deny", " .env")])
+
+    def test_plugin_icon_is_a_square_png_in_range(self):
+        # Plugin directory rule: square PNG, 512 to 2048 px per side, under 2 MB. Size is read from the PNG header.
+        path = os.path.join(ROOT, ".claude-plugin", "icon.png")
+        with open(path, "rb") as f:
+            head = f.read(24)
+        self.assertEqual(head[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertEqual(head[12:16], b"IHDR")
+        width, height = int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+        self.assertEqual(width, height)
+        self.assertTrue(512 <= width <= 2048, width)
+        self.assertLess(os.path.getsize(path), 2 * 1024 * 1024)
+
     def test_rule_files_hold_no_raw_secret_looking_strings(self):
         # GitHub secret scanning reads raw text: examples escape one character as \uXXXX,
         # so the file never shows a key while json.load still gives the rule the real string.

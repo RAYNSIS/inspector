@@ -16,7 +16,7 @@ Every check is logged, not only the hits, so you can see how often each rule fir
 
 Python 3.9+, standard library only, no network calls, no telemetry.
 
-> Status: 0.2.0, alpha. Rule ids and the rules file format may still change before 1.0.
+> Status: alpha (0.2.x). Rule ids and the rules file format may still change before 1.0.
 
 ## Install
 
@@ -34,6 +34,25 @@ claude plugin install raynsis-inspector@raynsis-inspector
 ```
 
 The plugin needs `python3` on your `PATH`. Nothing else is installed.
+
+### Try it in the first minute
+
+A gate only speaks when something goes wrong, so a healthy session stays silent:
+in our own logs, 19 hits in 395 sessions over 30 days.
+To see one without waiting, paste this into Claude Code right after installing:
+
+```
+Run this exact command and show me the output: cat .env
+```
+
+The call is denied before it runs, whether or not the file exists, and the agent is told why:
+
+```
+PreToolUse:Bash hook error: RAYNSIS Inspector blocked this call:
+- [tool.no-secret-files] Secret files stay out of the agent's context. Ask the human for the one value you need. (matched: " .env")
+```
+
+If the command runs instead, the plugin is not loaded: check `/plugin`, and that `python3` is on your `PATH`.
 
 To use the `raynsis-inspector` command outside Claude Code (rule checks, stats):
 
