@@ -33,7 +33,8 @@ claude plugin marketplace add RAYNSIS/inspector
 claude plugin install raynsis-inspector@raynsis-inspector
 ```
 
-The plugin needs `python3` on your `PATH`. Nothing else is installed.
+The plugin needs Python 3.9 or later on your `PATH`, under any of the names `python3`, `python` or `py`.
+Nothing else is installed. On Windows the hooks run through Git Bash, which comes with Git for Windows.
 
 ### Try it in the first minute
 
@@ -52,7 +53,7 @@ PreToolUse:Bash hook error: RAYNSIS Inspector blocked this call:
 - [tool.no-secret-files] Secret files stay out of the agent's context. Ask the human for the one value you need. (matched: " .env")
 ```
 
-If the command runs instead, the plugin is not loaded: check `/plugin`, and that `python3` is on your `PATH`.
+If the command runs instead, the plugin is not loaded: check `/plugin`, and that Python 3.9 or later is on your `PATH`.
 
 To use the `raynsis-inspector` command outside Claude Code (rule checks, stats):
 
@@ -335,8 +336,11 @@ Two lessons shaped the code:
   (`python3 -c "print(open('tests/a.py').read())"`); RAYNSIS Inspector does not read what the subagent did.
 - A link the agent typed into a shell command counts as seen, and so does a link it tried to fetch
   even if the fetch failed.
-- Windows: the tests pass in CI on Python 3.9 to 3.14, but RAYNSIS Inspector has not been tried in a live Claude Code
-  session on Windows. Hooks run through Git Bash or PowerShell and need `python3` on `PATH`.
+- Windows: hooks run through Git Bash, Claude Code's default hook shell on Windows. The launcher (`hooks/run.sh`)
+  skips the Microsoft Store `python3` shortcut and uses `python` or `py -3`; the first live Windows report
+  (0.2.4, a python.org install) was that shortcut. The fix is tested in CI under Git Bash on Python 3.9 to 3.14
+  and not yet confirmed in a live session. Without Git for Windows, Claude Code runs hooks in PowerShell,
+  which cannot run the launcher, and a failed `PreToolUse` hook then blocks the call: install Git for Windows first.
 
 ## Contributing
 

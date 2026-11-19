@@ -1,0 +1,2 @@
+# The hook launcher runs under Git Bash on Windows: a CRLF checkout would break it.
+*.sh text eol=lf

@@ -301,7 +301,9 @@ class Packaging(unittest.TestCase):
         hooks = self.read_json("hooks", "hooks.json")["hooks"]
         for event in ("PreToolUse", "Stop", "SubagentStop"):
             cmds = [h["command"] for group in hooks[event] for h in group["hooks"]]
-            self.assertTrue(all("${CLAUDE_PLUGIN_ROOT}/bin/raynsis-inspector" in c and c.endswith(" hook") for c in cmds), cmds)
+            self.assertEqual(cmds, ['sh "${CLAUDE_PLUGIN_ROOT}/hooks/run.sh" hook'])
+        with open(os.path.join(ROOT, "hooks", "run.sh"), encoding="utf-8") as f:
+            self.assertIn("launcher=$root/bin/raynsis-inspector", f.read())
         self.assertTrue(os.path.exists(os.path.join(ROOT, "bin", "raynsis-inspector")))
 
     def test_readme_rule_table_matches_the_rules(self):

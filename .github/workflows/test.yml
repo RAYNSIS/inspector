@@ -43,6 +43,23 @@ jobs:
           out=$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"rm -rf ~"},"cwd":"."}' | python bin/raynsis-inspector hook)
           echo "$out"
           echo "$out" | python -c "import json,sys; d=json.load(sys.stdin); assert d['hookSpecificOutput']['permissionDecision'] == 'deny'"
+      - name: Plugin launcher under the hook shell (Git Bash on Windows)
+        shell: bash
+        run: |
+          payload='{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cat .env"},"cwd":"."}'
+          deny='import json,sys; d=json.load(sys.stdin); assert d["hookSpecificOutput"]["permissionDecision"] == "deny"'
+          out=$(printf '%s' "$payload" | sh hooks/run.sh hook)
+          echo "$out"
+          echo "$out" | python -c "$deny"
+          # the same call behind a dead Microsoft Store shortcut named python3
+          stub=$(mktemp -d)/WindowsApps
+          mkdir -p "$stub"
+          printf '#!/bin/sh\necho "Python was not found; run without arguments to install from the Microsoft Store" >&2\nexit 49\n' > "$stub/python3"
+          chmod +x "$stub/python3"
+          [ "$(PATH="$stub:$PATH" command -v python3)" = "$stub/python3" ]
+          out=$(printf '%s' "$payload" | PATH="$stub:$PATH" sh hooks/run.sh hook)
+          echo "$out"
+          echo "$out" | python -c "$deny"
 
   package:
     runs-on: ubuntu-latest

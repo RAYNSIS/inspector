@@ -4,6 +4,22 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.5
+
+The first report from a Windows machine: after install every tool call printed a hook error and nothing
+was checked. The hooks called `python3`, which on a python.org install is a Microsoft Store shortcut
+that prints an install hint and fails; the real interpreter there is `python`.
+
+- Hooks now start through `hooks/run.sh`, a POSIX shell launcher that finds a working Python 3.9+:
+  a real `python3` is used directly, a `python3` under `WindowsApps` is probed first, then `python`,
+  then `py -3`. With none it says so on stderr and prints no decision.
+- `.gitattributes` keeps the launcher's line endings LF, so a Windows checkout with `core.autocrlf` cannot break it.
+- CI runs the launcher under Git Bash on Windows, once as is and once behind a dead `python3` shortcut.
+- README: the install note and the Windows limitation say what is needed (Git for Windows, any of the
+  three Python names) and what is still unconfirmed (a live Windows session).
+
+No rule or engine change. Cost on our test machine: the extra shell adds about 8 ms to a hook call.
+
 ## 0.2.4
 
 - README: a "Try it in the first minute" step right under Install. Rules fire rarely in ordinary work
