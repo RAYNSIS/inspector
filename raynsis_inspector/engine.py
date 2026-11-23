@@ -11,8 +11,9 @@ EVENTS = ("tool", "reply")
 ACTIONS = ("deny", "ask", "warn")
 CHECKS = ("urls_seen",)
 REGEX_KEYS = ("pattern", "unless", "needs_turn", "unless_url", "tool_pattern")
-STR_KEYS = ("id", "event", "action", "message", "check") + REGEX_KEYS
-LIST_KEYS = ("tools", "field", "needs_turn_tools", "needs_turn_field")
+STR_KEYS = ("id", "event", "action", "message", "check", "seen_scope") + REGEX_KEYS
+LIST_KEYS = ("tools", "field", "needs_turn_tools", "needs_turn_field", "allow_hosts")
+SEEN_SCOPES = ("url", "host")
 URL_RE = re.compile(r"https?://[^\s<>\"'`)\]]+")
 URL_TRAIL = ".,;:!?*_"
 RULES_MAX_BYTES = 1024 * 1024
@@ -47,6 +48,10 @@ def validate(rule) -> list:
         errs.append("%s: action 'ask' is for tool rules only (a reply has no permission prompt)" % rid)
     if rule.get("check") and rule["check"] not in CHECKS:
         errs.append("%s: unknown check %r" % (rid, rule["check"]))
+    if rule.get("seen_scope") and rule["seen_scope"] not in SEEN_SCOPES:
+        errs.append("%s: seen_scope must be one of %s" % (rid, "/".join(SEEN_SCOPES)))
+    if any(not h.strip() or h.strip() == "*." for h in _as_list(rule.get("allow_hosts"))):
+        errs.append("%s: 'allow_hosts' has an empty entry" % rid)
     if not rule.get("pattern") and not rule.get("check"):
         errs.append("%s: needs 'pattern' or 'check'" % rid)
     for k in REGEX_KEYS:
@@ -277,18 +282,69 @@ def _seen_urls(seen: str) -> set:
     return out
 
 
-def unseen_urls(reply: str, seen: str, unless: str = "") -> list:
-    """URLs in the reply that never appeared in anything the agent saw this session."""
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def url_origin(u: str) -> str:
+    """scheme://host[:port], lower case, default port dropped, user info ignored ("" if unparsable)."""
+    try:
+        p = urlsplit(u.rstrip(URL_TRAIL))
+        port = p.port
+    except ValueError:
+        return ""
+    if not p.hostname:
+        return ""
+    scheme = p.scheme.lower()
+    port = ":%d" % port if port and port != _DEFAULT_PORTS.get(scheme) else ""
+    return "%s://%s%s" % (scheme, p.hostname.lower().rstrip("."), port)
+
+
+def url_host(u: str) -> str:
+    o = url_origin(u)
+    return o.split("://", 1)[1].split(":", 1)[0] if o else ""
+
+
+def _host_allowed(host: str, allow) -> bool:
+    """"vendor.example" matches only that host; "*.vendor.example" matches its subdomains."""
+    if not host:
+        return False
+    for a in allow or ():
+        a = a.strip().lower().rstrip(".")
+        if a.startswith("*."):
+            if host.endswith(a[1:]) and host != a[2:]:
+                return True
+        elif a and host == a:
+            return True
+    return False
+
+
+def unseen_urls(reply: str, seen: str, unless: str = "", scope: str = "url", allow_hosts=()) -> list:
+    """URLs in the reply that never appeared in anything the agent saw this session.
+
+    scope "host": a URL also passes when its scheme + host appeared in the seen text.
+    allow_hosts: hosts that always pass ("github.com", "*.vendor.example").
+    """
+    allow = _as_list(allow_hosts)
     known = None
+    origins = None
     out = []
     for u in URL_RE.findall(reply or ""):
         u = u.rstrip(URL_TRAIL)
         if unless and re.search(unless, _without_userinfo(u)):
             continue
+        if allow and _host_allowed(url_host(u), allow):
+            continue
         if known is None:
             known = _seen_urls(seen)
         if _norm_url(u) in known:
             continue
+        if scope == "host":
+            if origins is None:
+                origins = {url_origin(s) for s in URL_RE.findall((seen or "").replace("\\/", "/"))}
+                origins.discard("")
+            o = url_origin(u)
+            if o and o in origins:
+                continue
         out.append(u)
     return out
 
@@ -451,7 +507,7 @@ def reply_hits(rules: list, reply: str, turn=(), seen: str = "") -> list:
         if not applies(r, "reply"):
             continue
         if r.get("check") == "urls_seen":
-            bad = unseen_urls(reply, seen, r.get("unless_url", ""))
+            bad = unseen_urls(reply, seen, r.get("unless_url", ""), r.get("seen_scope") or "url", r.get("allow_hosts"))
             if not bad:
                 continue
             excerpt = bad[0]

@@ -203,7 +203,10 @@ def run_hook(payload: dict) -> int:
         hits = engine.reply_hits(applicable, reply, turn, seen)
         if any(r.get("check") == "urls_seen" for r, _ in hits) and transcript.longer_than_tail(path):
             # a link given early in a long session is outside the tail we read: look it up in the whole file
-            seen += "\n" + transcript.older_text_with(path, engine.URL_RE.findall(reply))
+            wanted = engine.URL_RE.findall(reply)
+            if any(r.get("check") == "urls_seen" and r.get("seen_scope") == "host" for r, _ in hits):
+                wanted += [o for o in map(engine.url_origin, wanted) if o]  # host scope: any page of that host
+            seen += "\n" + transcript.older_text_with(path, wanted)
             hits = engine.reply_hits(applicable, reply, turn, seen)
     else:
         if note and not shadow():
@@ -212,7 +215,10 @@ def run_hook(payload: dict) -> int:
 
     audit.log_eval(session, event, [r["id"] for r in applicable], [r["id"] for r, _ in hits], **extra_log)
     for r, excerpt in hits:
-        audit.log_hit(session, event, r, excerpt, shadow=shadow())
+        if event == "tool":
+            audit.log_hit(session, event, r, excerpt, shadow=shadow(), context=audit.tool_context(tool_input), tool=tool)
+        else:
+            audit.log_hit(session, event, r, excerpt, shadow=shadow())
     if shadow():
         return 0
     mode = payload.get("permission_mode")

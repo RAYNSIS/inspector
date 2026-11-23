@@ -4,6 +4,29 @@ All notable changes to RAYNSIS Inspector (named kanit up to 0.1.0). The format f
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.2
+
+The first outside user sent their audit log: 216 of 231 hits came from the link rule, and the log itself
+could hold a secret.
+
+- `reply.unopened-link` takes two new fields, both off by default. `"seen_scope": "host"` passes a link whose
+  scheme + host the agent saw this session; `"allow_hosts"` passes listed hosts (`*.vendor.example` for subdomains).
+  User info is still dropped first, so `https://example.com:x@evil.io/` is judged as `evil.io`.
+- The audit log records `tool` and `context` (first 120 characters of the command or path) for tool hits.
+  `excerpt` and `context` are masked; before this, a `tool.no-secret-in-command` hit wrote the secret itself
+  into `audit.jsonl`. `stats` still reads older lines.
+- `tool.no-curl-pipe-shell` catches `| py`, `| py -3`, `| py -3 -`, `| /usr/bin/python3` and `| /bin/bash`;
+  `| py -3 -c "..."` stays a read. It no longer flags interpreter flags before `-c` (`python -X utf8 -c`,
+  `python3 -I -c`, `python.exe -c`) or a heredoc script (`| python3 - <<'EOF'`).
+- `tool.no-test-file-delete` lets you delete test files in temporary folders (`/tmp`, `$TMPDIR`, `%TEMP%`,
+  `$env:TEMP`); a command that also deletes a project test file still warns.
+- `tool.no-test-file-delete` ran in quadratic time on a long run of dashes or slashes (a 60 KB command took
+  over a minute); it is linear again.
+- `tool.no-recursive-delete-home` had the same problem on a long run of `rm -`; an `rm` right after a dash no
+  longer starts a new match. `rm -rf ~`, `sudo rm -rf ~/` and `/bin/rm -rf $HOME` are still denied.
+- `redact` is tested to stay under a second on hostile input, and the linear-time test covers `rm -`, `rm /`
+  and `rm -a` runs.
+
 ## 0.3.1
 
 A Windows user ran 0.3.0 through 40 trials of their own. Three Turkish phrasings got past the reply rules, and

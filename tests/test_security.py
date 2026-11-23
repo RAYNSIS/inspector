@@ -352,11 +352,24 @@ class SecondAudit(Base):
         for unit in ("dd ", PUSH + " -", "git -a ", "tee ", "find .claude ", "cu" + "rl x | ", "rm -rf x ",
                      # 0.2.2: the first drafts of these alternatives were quadratic (20 s on 60 KB)
                      "rm ~ x ", "chmod 644 ", "chmod -x a ", "cargo publish x ", "Remove-Item -r x ", "find ~ x ",
-                     "find tests x ", "mv a b ", "cp /dev/null ", ": > x ", "pip x "):
+                     "find tests x ", "mv a b ", "cp /dev/null ", ": > x ", "pip x ",
+                     # long rm runs: keep the earlier quadratic rm alternatives from coming back
+                     "rm -a ", "rm - ", "rm / ", "rm -a", "rm -", "rm /"):
             cmd = unit * (60000 // len(unit))
             t = time.time()
             engine.tool_hits(tool_rules, "Bash", {"command": cmd})
             self.assertLess(time.time() - t, 3.0, unit)
+
+    def test_redact_is_bounded_on_hostile_input(self):
+        # the masking patterns are quadratic on unbounded text ("token" * 12000 took 11 s, "-a" * 30000 2.7 s);
+        # redact() cuts its input first, so each call must stay well under the hook budget
+        for unit in ("-", "=", "A", "KEY=", "--token ", "Bearer ", "://", ":", "@", ":@", "a://b:", "-u a:",
+                     "x-key: ", "-----BEGIN RSA PRIVATE KEY-----", "eyJa.", "ghp_", "--", "-a", "token"):
+            for n in (2000, 60000):
+                text = (unit * (n // len(unit) + 1))[:n]
+                t = time.time()
+                audit.redact(text)
+                self.assertLess(time.time() - t, 1.0, (unit, n))
 
     def test_many_links_in_a_long_session_cost_one_pass(self):
         # was links x lines: 300 links in a 60,000-line session took 14 s and ended in "not checked"

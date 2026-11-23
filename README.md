@@ -18,7 +18,7 @@ Every check is logged, not only the hits, so you can see how often each rule fir
 
 Python 3.9+, standard library only, no network calls, no telemetry.
 
-> Status: alpha (0.2.x). Rule ids and the rules file format may still change before 1.0.
+> Status: alpha (0.3.x). Rule ids and the rules file format may still change before 1.0.
 
 ## Install
 
@@ -41,7 +41,7 @@ Nothing else is installed. On Windows the hooks run through Git Bash, which come
 **Pin a version.** Add `#` and a release tag to the source, and you run that release and nothing newer:
 
 ```
-/plugin install raynsis-inspector --marketplace RAYNSIS/inspector#v0.3.1
+/plugin install raynsis-inspector --marketplace RAYNSIS/inspector#v0.3.2
 ```
 
 Claude Code does not auto-update plugins from a third-party marketplace such as this one unless you turn
@@ -250,10 +250,22 @@ A new rule:
 | `needs_turn_tools` | reply rules: only calls of these tools count as evidence (default all) |
 | `needs_turn_field` | reply rules: only these input fields of those calls are matched (default the whole input); the packaged test and build rules use `command` and `prompt` |
 | `check` | `urls_seen` for the link rule; `unless_url` exempts links |
+| `seen_scope` | link rule: `url` (default) passes only a link that appeared in what the agent saw; `host` also passes any page of a scheme + host it saw |
+| `allow_hosts` | link rule: hosts that always pass, such as `github.com`; `*.vendor.example` covers its subdomains, not `vendor.example` itself |
 | `only_added` | tool rules: fire only when an edit adds a match |
 | `examples` | `hit` and `miss` lists; `raynsis-inspector test-rules` fails a rule without a `hit` example |
 
 Run `raynsis-inspector test-rules` after every change. An invalid rule is reported and skipped; the others keep working.
+
+If `reply.unopened-link` is too strict for your work (the agent opened a repository and then cites its issues),
+loosen it in `.raynsis-inspector/rules.json` or a `RAYNSIS_INSPECTOR_RULES` file:
+
+```json
+[{"id": "reply.unopened-link", "seen_scope": "host", "allow_hosts": ["github.com", "*.vendor.example"]}]
+```
+
+This is off by default on purpose: the link an agent makes up is most often a real host with an invented path.
+Hosts are compared after user info is dropped, so `https://github.com:x@evil.io/` is still judged as `evil.io`.
 
 A project file can turn a packaged rule off or change it. When it does, RAYNSIS Inspector tells the human once per
 session which rules were weakened, so a cloned repository cannot quietly disarm the gates.
@@ -313,6 +325,10 @@ raynsis-inspector doctor         install, rules and log health
 ```
 
 `.raynsis-inspector/` gets its own `.gitignore` for the logs; `rules.json` stays committable.
+
+A tool hit also records `tool` and `context`, the first 120 characters of the command or path. File contents are
+never logged. `excerpt` and `context` are masked first: `KEY=value`, `--token x`, authorization headers, URL
+passwords and common token shapes are written as `***`. Older log lines without these fields still count in `stats`.
 
 The rule at the top of `stats` is where your agent cuts corners most. Sessions in which you try the
 rules out fire them on purpose and will lead the table: in our own log, 128 of 144 hit lines came from

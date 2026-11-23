@@ -352,5 +352,109 @@ class Packaging(unittest.TestCase):
             self.assertIn('raynsis_inspector = ["rules/*.json"]', f.read())
 
 
+class LinkHostScope(Base):
+    REPLY = "Record: https://github.com/RAYNSIS/inspector/issues/3"
+    SEEN = "see https://github.com/RAYNSIS/inspector"
+
+    def link_rule(self, **extra):
+        rules, errors = engine.load_rules(cli.rule_paths())
+        self.assertEqual(errors, [])
+        r = dict(next(x for x in rules if x["id"] == "reply.unopened-link"), **extra)
+        self.assertEqual(engine.validate(r), [])
+        return r
+
+    def test_default_scope_is_still_the_exact_url(self):
+        self.assertEqual(len(engine.reply_hits([self.link_rule()], self.REPLY, seen=self.SEEN)), 1)
+
+    def test_host_scope_passes_a_seen_host(self):
+        r = self.link_rule(seen_scope="host")
+        self.assertEqual(engine.reply_hits([r], self.REPLY, seen=self.SEEN), [])
+        self.assertEqual(len(engine.reply_hits([r], "https://never-seen.example/x", seen=self.SEEN)), 1)
+        # scheme is part of the origin, and a default port is the same origin
+        self.assertEqual(len(engine.reply_hits([r], "http://github.com/x", seen=self.SEEN)), 1)
+        self.assertEqual(engine.reply_hits([r], "https://github.com:443/x", seen=self.SEEN), [])
+
+    def test_userinfo_trick_is_judged_by_the_real_host_in_both_modes(self):
+        bad = "https://github.com:x@evil.io/a"
+        for extra in ({}, {"seen_scope": "host"}, {"allow_hosts": ["github.com"]}):
+            self.assertEqual(len(engine.reply_hits([self.link_rule(**extra)], bad, seen=self.SEEN)), 1, extra)
+
+    def test_allow_hosts(self):
+        r = self.link_rule(allow_hosts=["github.com", "*.vendor.example"])
+        self.assertEqual(engine.reply_hits([r], "https://github.com/a https://docs.vendor.example/b", seen=""), [])
+        self.assertEqual(len(engine.reply_hits([r], "https://vendor.example/b", seen="")), 1)  # "*." is subdomains only
+        self.assertEqual(len(engine.reply_hits([r], "https://github.com.evil.io/b", seen="")), 1)
+
+    def test_validate_errors(self):
+        base = {"id": "x", "event": "reply", "action": "warn", "message": "m", "check": "urls_seen"}
+        self.assertTrue(engine.validate(dict(base, seen_scope="domain")))
+        self.assertTrue(engine.validate(dict(base, allow_hosts=["", "a.example"])))
+        self.assertTrue(engine.validate(dict(base, allow_hosts=[1])))
+        self.assertEqual(engine.validate(dict(base, seen_scope="host", allow_hosts="a.example")), [])
+
+    def test_project_file_turns_it_on(self):
+        d = os.path.join(self.tmp.name, ".raynsis-inspector")
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "rules.json"), "w", encoding="utf-8") as f:
+            json.dump([{"id": "reply.unopened-link", "seen_scope": "host"}], f)
+        old = os.getcwd()
+        os.chdir(self.tmp.name)
+        try:
+            rules, errors = engine.load_rules(cli.rule_paths())
+        finally:
+            os.chdir(old)
+        self.assertEqual(errors, [])
+        self.assertEqual(engine.reply_hits(rules, self.REPLY, seen=self.SEEN), [])
+
+
+class AuditContext(Base):
+    SECRET = "s3cr3tVALUEdo-not-log-1234567890"
+
+    def bash(self, command):
+        return self.hook({"hook_event_name": "PreToolUse", "session_id": "s1", "tool_name": "Bash",
+                          "tool_input": {"command": command}, "cwd": self.tmp.name})
+
+    def raw_log(self):
+        with open(os.path.join(audit.home(), "audit.jsonl"), encoding="utf-8") as f:
+            return f.read()
+
+    def test_tool_hit_logs_masked_context_and_tool(self):
+        self.bash("API_TOKEN=%s git push --force origin main" % self.SECRET)
+        rows = audit.read_jsonl("audit.jsonl")
+        self.assertTrue(rows)
+        self.assertEqual(rows[0]["tool"], "Bash")
+        self.assertIn("git push --force", rows[0]["context"])
+        self.assertLessEqual(len(rows[0]["context"]), audit.CONTEXT_CHARS)
+        self.assertNotIn(self.SECRET, self.raw_log())
+
+    def test_secret_in_command_hit_does_not_write_the_secret(self):
+        rules, _ = engine.load_rules(cli.rule_paths())
+        rule = next(r for r in rules if r["id"] == "tool.no-secret-in-command")
+        token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        cmd = next(c for c in ("export GITHUB_TOKEN=" + token, "git clone https://x:%s@github.com/a/b" % token,
+                               "gh auth login --with-token " + token)
+                   if engine.tool_hits([rule], "Bash", {"command": c}))
+        self.bash(cmd)
+        rows = [r for r in audit.read_jsonl("audit.jsonl") if r.get("rule") == "tool.no-secret-in-command"]
+        self.assertTrue(rows)
+        self.assertNotIn(token[6:], self.raw_log())
+
+    def test_redact_shapes(self):
+        cases = ["KEY=%s", "--token %s", "--api-key=%s", "Authorization: Bearer %s", "-H 'X-Api-Key: %s'",
+                 "https://user:%s@example.com/", "curl -u admin:%s"]
+        for c in cases:
+            self.assertNotIn(self.SECRET, audit.redact(c % self.SECRET), c)
+        self.assertEqual(audit.redact("ls -la src"), "ls -la src")
+
+    def test_context_never_logs_file_content(self):
+        self.assertEqual(audit.tool_context({"content": "PASSWORD=" + self.SECRET}), "")
+        self.assertEqual(audit.tool_context({"file_path": "src/a.py", "content": "x"}), "src/a.py")
+
+    def test_stats_reads_old_rows(self):
+        audit._append("audit.jsonl", {"session": "s", "event": "tool", "rule": "r", "action": "deny", "excerpt": "x"})
+        audit._append("evals.jsonl", {"session": "s", "event": "tool", "evaluated": ["r"], "hits": ["r"]})
+        self.assertEqual(cli.stats(out=io.StringIO())["r"]["checked"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

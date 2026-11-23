@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import stat
 import sys
 import tempfile
@@ -86,8 +87,59 @@ def read_jsonl(name: str) -> list:
     return rows
 
 
-def log_hit(session: str, event: str, rule: dict, excerpt: str, shadow: bool = False) -> None:
-    row = {"session": session, "event": event, "rule": rule["id"], "action": rule["action"], "excerpt": excerpt[:160]}
+CONTEXT_CHARS = 120
+_REDACT_INPUT = 2000  # text is cut to this before masking, so masking cost stays bounded
+_MASK = "***"
+# Each pattern keeps group 1 and replaces the rest of the match with ***. All are linear: no nested repeats.
+_REDACTIONS = [
+    re.compile(r"(-----BEGIN [A-Z ]*PRIVATE KEY-----)[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)"),
+    re.compile(r"(?i)((?:authorization|proxy-authorization|cookie|set-cookie|x-[a-z0-9-]*(?:key|token|secret|auth)[a-z0-9-]*)\s*:\s*)[^\r\n\"']+"),
+    re.compile(r"(?i)(\b(?:bearer|basic|token)\s+)[A-Za-z0-9._~+/=-]{4,}"),
+    re.compile(r"(\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s/:@]*:)[^\s/@]+(?=@)"),
+    re.compile(r"((?:^|\s)-u\s*['\"]?[^\s:'\"]+:)[^\s'\"]+"),
+    re.compile(r"(?i)((?<![\w-])--?[a-z0-9-]*(?:token|key|secret|passw(?:or)?d|pass|pwd|auth)[a-z0-9-]*(?:=|\s+)['\"]?)[^\s'\"]+"),
+    re.compile(r"(?i)(\b[a-z0-9_]*(?:key|token|secret|passw(?:or)?d|pwd|credential)[a-z0-9_]*\s*[=:]\s*['\"]?)[^\s'\"]+"),
+    re.compile(r"(\b(?:AKIA|ASIA|ghp_|gho_|ghu_|ghs_|github_pat_|sk-|xox[abprs]-|sk_live_|rk_live_|AIza)[A-Za-z0-9]{0,2})[A-Za-z0-9_\-]{8,}"),
+    re.compile(r"(\beyJ[A-Za-z0-9_-]{1,4})[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"),
+]
+
+
+def redact(text: str) -> str:
+    """Mask secret values (KEY=value, --token x, auth headers, known token shapes) before a log line is written."""
+    text = text or ""
+    if len(text) > _REDACT_INPUT:
+        text = text[:_REDACT_INPUT]
+    for rx in _REDACTIONS:
+        text = rx.sub(lambda m: m.group(1) + _MASK, text)
+    return text
+
+
+_CONTEXT_FIELDS = ("command", "file_path", "notebook_path", "path", "url", "pattern", "glob")
+
+
+def tool_context(tool_input) -> str:
+    """The first ~120 characters of what the tool was asked to do, masked. File contents are never logged."""
+    if not isinstance(tool_input, dict):
+        return ""
+    for k in _CONTEXT_FIELDS:
+        v = tool_input.get(k)
+        if isinstance(v, str) and v.strip():
+            text = " ".join(v[:_REDACT_INPUT].split())
+            if len(v) > _REDACT_INPUT and " " in text:
+                text = text.rsplit(" ", 1)[0]  # drop a half-cut last word before masking
+            text = redact(text)
+            return text if len(text) <= CONTEXT_CHARS else text[:CONTEXT_CHARS - 3] + "..."
+    return ""
+
+
+def log_hit(session: str, event: str, rule: dict, excerpt: str, shadow: bool = False,
+            context: str = "", tool: str = "") -> None:
+    row = {"session": session, "event": event, "rule": rule["id"], "action": rule["action"],
+           "excerpt": redact(excerpt or "")[:160]}
+    if context:
+        row["context"] = redact(context)[:CONTEXT_CHARS]
+    if tool:
+        row["tool"] = tool[:64]
     if shadow:
         row["shadow"] = True
     _append("audit.jsonl", row)
